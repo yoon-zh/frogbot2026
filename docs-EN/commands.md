@@ -1007,3 +1007,16 @@ From your phone or computer:
 2. Open a browser, enter [frogboard.yoonzh.com](https://frogboard.yoonzh.com/)
 3. Enter the IP address: `192.168.100.102` and the port `9090`, then save
 4. Check the logs to see connection status
+
+### How to disconnect
+
+There are three ways to disconnect:
+- Simply close the browser tab
+- Change Wi-Fi connection
+- From SSH, run:
+
+```bash
+make kill-phones
+```
+
+Note: This force-disconnects ALL devices from the robot connected through FrogBoard. The server will restart automatically after 3 seconds.
