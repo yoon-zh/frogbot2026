@@ -12,6 +12,7 @@ import sys
 import tty
 import select
 import threading
+import queue
 
 REAL_SERIAL_PORT = "/dev/serial_twistctl"
 VIRTUAL_SERIAL_TX = "/tmp/virtual_twist_tx"
@@ -23,6 +24,9 @@ ps2_connected = False
 last_phone_cmd_time = 0
 phone_vcx = 0.0
 phone_wc = 0.0
+serial_cmd_queue = queue.Queue()
+active_mode = None
+active_subscriptions = {}
 
 def create_pty(path):
     master, slave = pty.openpty()
@@ -91,6 +95,14 @@ def serial_proxy_thread(loop):
                             pass
             except Exception as e:
                 print(f"Serial read error: {e}")
+        
+        # Process explicit commands from WebSocket
+        while not serial_cmd_queue.empty():
+            cmd_bytes = serial_cmd_queue.get_nowait()
+            try:
+                ser.write(cmd_bytes)
+            except OSError:
+                pass
 
         # 2. Control Logic & Multiplexing
         if len(connected_clients) == 0 and not ps2_connected:
@@ -151,14 +163,30 @@ async def handle_websocket(websocket, path):
                 phone_vcx = float(data.get("linear", 0.0))
                 phone_wc = float(data.get("angular", 0.0))
                 last_phone_cmd_time = time.time()
+            elif data.get("type") == "motor_state":
+                enable = data.get("enable")
+                if enable:
+                    serial_cmd_queue.put(b"vcx=0.000,wc=0.000,en=1\n")
+                else:
+                    serial_cmd_queue.put(b"vcx=0.000,wc=0.000,en=0\n")
             elif data.get("type") == "launch":
                 mode = data.get("mode")
                 asyncio.create_task(run_make_command(f"launch-{mode}"))
-            elif data.get("type") == "kill":
-                asyncio.create_task(run_make_command("kill"))
+            elif data.get("type") == "subscribe":
+                topic = data.get("topic")
+                if topic:
+                    task = asyncio.create_task(run_ros2_topic_echo(websocket, topic))
+                    active_subscriptions[websocket] = task
+            elif data.get("type") == "unsubscribe":
+                if websocket in active_subscriptions:
+                    active_subscriptions[websocket].cancel()
+                    del active_subscriptions[websocket]
     except Exception:
         pass
     finally:
+        if websocket in active_subscriptions:
+            active_subscriptions[websocket].cancel()
+            del active_subscriptions[websocket]
         connected_clients.remove(websocket)
         await broadcast_state()
 
@@ -166,7 +194,8 @@ async def broadcast_state():
     state = json.dumps({
         "type": "state",
         "connections": len(connected_clients),
-        "ps2_connected": ps2_connected
+        "ps2_connected": ps2_connected,
+        "active_mode": active_mode
     })
     if connected_clients:
         await asyncio.gather(*(ws.send(state) for ws in connected_clients), return_exceptions=True)
@@ -188,6 +217,59 @@ async def run_make_command(target):
             await asyncio.gather(*(ws.send(log_msg) for ws in connected_clients), return_exceptions=True)
     await process.wait()
 
+async def run_ros2_topic_echo(websocket, topic):
+    process = None
+    try:
+        cmd = f"source /opt/ros/humble/setup.bash && ros2 topic echo {topic}"
+        process = await asyncio.create_subprocess_exec(
+            "bash", "-c", cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.STDOUT
+        )
+        while True:
+            line = await process.stdout.readline()
+            if not line:
+                break
+            msg = json.dumps({
+                "type": "topic_data", 
+                "topic": topic, 
+                "data": line.decode(errors='replace').strip()
+            })
+            await websocket.send(msg)
+    except asyncio.CancelledError:
+        if process:
+            try:
+                process.terminate()
+            except:
+                pass
+    except Exception:
+        pass
+
+async def monitor_active_mode():
+    global active_mode
+    while True:
+        try:
+            output = subprocess.check_output(["pgrep", "-a", "-f", "make launch-"]).decode()
+            current_mode = None
+            for line in output.strip().split('\n'):
+                if 'make launch-' in line and not 'pgrep' in line:
+                    parts = line.split('make launch-')
+                    if len(parts) > 1:
+                        current_mode = parts[1].split()[0]
+                        break
+            
+            if current_mode != active_mode:
+                active_mode = current_mode
+                await broadcast_state()
+        except subprocess.CalledProcessError:
+            if active_mode is not None:
+                active_mode = None
+                await broadcast_state()
+        except Exception:
+            pass
+        
+        await asyncio.sleep(2.0)
+
 async def close_all_connections():
     for ws in list(connected_clients):
         await ws.close(1000, "Force disconnected by make kill-phones")
@@ -201,6 +283,8 @@ if __name__ == "__main__":
 
     proxy_thread = threading.Thread(target=serial_proxy_thread, args=(loop,), daemon=True)
     proxy_thread.start()
+    
+    loop.create_task(monitor_active_mode())
 
     start_server = websockets.serve(handle_websocket, "192.168.100.102", 9090)
     print("FrogBoard Server started at ws://192.168.100.102:9090")
