@@ -305,7 +305,8 @@ void Serial_Output(){
     else
         frc_ctrl_mode = 0;
 
-    usart_printf("%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%d,%d\n",
+    int ps2_connected = (PS2_RedLight() == 0) ? 1 : 0;
+    usart_printf("%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%d,%d,%d\n",
                       x, y, z, // Position coordinates
                       Q.element.x,
                       Q.element.y,
@@ -320,7 +321,8 @@ void Serial_Output(){
                       magnetometer.axis.y,
                       magnetometer.axis.z, // Magnetometer data
                       frc_ctrl_mode,
-                      PS2_KEY); // FRC: control mode + PS2 key
+                      PS2_KEY,
+                      ps2_connected); // FRC: control mode + PS2 key + ps2_connected
 
   //  LongLat2XY(Convert_to_degrees(Save_Data.longitude),Convert_to_degrees(Save_Data.latitude),&gps_X,&gps_Y);
 //  LongLat2XY(120.742925,31.268221,&gps_X0,&gps_Y0);
@@ -427,13 +429,22 @@ void Serial_Input(const char* input_data)
     {   
         // led_green_start();
         float temp_vcx, temp_wc;
+        int temp_en = 1;
         snprintf(record_input_buffer, sizeof(record_input_buffer), "%s", input_data);
 
         // Attempt to parse the input data
-        if (sscanf(input_data, "vcx=%f,wc=%f\n", &temp_vcx, &temp_wc) == 2) {
+        int parsed = sscanf(input_data, "vcx=%f,wc=%f,en=%d", &temp_vcx, &temp_wc, &temp_en);
+        if (parsed >= 2) {
             // If parsing is successful, update Vcx and Wc
             Vcx = temp_vcx;
             Wc = temp_wc;
+            if (temp_en == 1) {
+                motor_ready = 1;
+                motor_shutdown = 0;
+                control_mode = 1;
+            } else {
+                motor_shutdown = 1;
+            }
             last_serial_command_tick = HAL_GetTick();
             serial_command_seen = 1U;
             
@@ -459,6 +470,7 @@ void Serial_Command_Watchdog(void)
     {
         Vcx = 0.0f;
         Wc = 0.0f;
+        motor_shutdown = 1;
     }
 }
 

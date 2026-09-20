@@ -142,7 +142,7 @@ public:
         chassis_status_pub_ = this->create_publisher<frc_msgs::msg::ChassisStatus>("/chassis/status", 10);
 
         // 声明串口设备参数
-        this->declare_parameter<std::string>("port", "/dev/serial_twistctl");
+        this->declare_parameter<std::string>("port", "/tmp/virtual_twist_rx");
         // 声明波特率参数
         this->declare_parameter<int>("baud", 115200);
         // 获取串口设备参数

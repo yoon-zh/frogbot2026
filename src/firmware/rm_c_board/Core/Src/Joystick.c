@@ -115,7 +115,16 @@ void Joystick_motor_control(void)
     Joystick_motor_start();
 
     // 只有在手柄控制模式且motor_shutdown == 0下，才从手柄更新 Vcx 和 Wc
-    if (control_mode == 0)
+    // 或在串口控制下，如果手柄活跃，强制覆盖 Vcx 和 Wc
+    int ps2_connected = (PS2_RedLight() == 0);
+    int ps2_active = 0;
+    if (ps2_connected) {
+        if (PS2_LY < 108 || PS2_LY > 148 || PS2_RX < 107 || PS2_RX > 147 || PS2_LX < 108 || PS2_LX > 148 || PS2_RY < 107 || PS2_RY > 147 || PS2_KEY != 0) {
+            ps2_active = 1;
+        }
+    }
+
+    if (control_mode == 0 || (control_mode == 1 && ps2_active))
     {
         if (motor_ready == 1 && motor_shutdown == 0 )
         {

@@ -142,7 +142,7 @@ public:
         }
 
         // 声明端口参数
-        this->declare_parameter<std::string>("port", "/dev/serial_twistctl");
+        this->declare_parameter<std::string>("port", "/tmp/virtual_twist_tx");
         // 声明波特率参数
         this->declare_parameter<int>("baudrate", 115200);
         // 声明发送尝试次数参数
