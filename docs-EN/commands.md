@@ -978,3 +978,32 @@ rc
 7. To test it, run: `s1`
 
 Whenever you want to update `~/.bashrc`, modify it first from [/scripts/.bashrc](/scripts/.bashrc), then follow the steps above to make sure we keep track of the file. Do not modify it in the Jetson without tracking it in this repo.
+
+
+## FrogBoard: Mobile App Controlling
+
+### Initial setup
+
+1. Install `websockets`
+
+```bash
+pip install websockets
+```
+
+2. Set up server autorunning service
+
+```bash
+sudo cp ~/frogbot2026/scripts/frogboard_server/frogboard.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable frogboard.service
+sudo systemctl start frogboard.service
+```
+
+### How to use
+
+From your phone or computer:
+
+1. Connect to the robot's Wi-Fi
+2. Open a browser, enter [frogboard.yoonzh.com](https://frogboard.yoonzh.com/)
+3. Enter the IP address: `192.168.100.102` and the port `9090`, then save
+4. Check the logs to see connection status
