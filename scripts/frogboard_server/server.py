@@ -120,15 +120,19 @@ def serial_proxy_thread(loop):
             # Drain TX PTY to prevent blocking
             if master_tx in r:
                 try:
-                    os.read(master_tx, 1024)
+                    data = os.read(master_tx, 1024)
+                    if not data:
+                        time.sleep(0.01)
                 except OSError as e:
                     if e.errno != 5: # Ignore EIO
                         pass
+                    time.sleep(0.01)
         else:
             if phone_active:
                 # Phone joystick active -> override ROS
                 if now - last_phone_send > 0.05:
-                    cmd = f"vcx={phone_vcx:.3f},wc={phone_wc:.3f},en=1\n"
+                    en_val = 1 if phone_motor_enable else 0
+                    cmd = f"vcx={phone_vcx:.3f},wc={phone_wc:.3f},en={en_val}\\n"
                     try:
                         ser.write(cmd.encode())
                     except OSError:
@@ -137,10 +141,13 @@ def serial_proxy_thread(loop):
                 # Drain TX PTY to prevent blocking
                 if master_tx in r:
                     try:
-                        os.read(master_tx, 1024)
+                        data = os.read(master_tx, 1024)
+                        if not data:
+                            time.sleep(0.01)
                     except OSError as e:
                         if e.errno != 5:
                             pass
+                        time.sleep(0.01)
             else:
                 # Phone idle -> let ROS (TX PTY) through
                 ros_sent = False
@@ -151,9 +158,12 @@ def serial_proxy_thread(loop):
                             ser.write(data)
                             last_ros_cmd_time = now
                             ros_sent = True
+                        else:
+                            time.sleep(0.01)
                     except OSError as e:
                         if e.errno != 5: # Ignore EIO
                             pass
+                        time.sleep(0.01)
                 
                 # If ROS hasn't sent commands recently, send keep-alive based on phone_motor_enable
                 if not ros_sent and (now - last_ros_cmd_time > 0.5):
@@ -178,8 +188,8 @@ async def handle_websocket(websocket, path=None):
             try:
                 data = json.loads(message)
                 if data.get("type") == "joystick":
-                    phone_vcx = float(data.get("linear", 0.0))
-                    phone_wc = float(data.get("angular", 0.0))
+                    phone_vcx = float(data.get("linear", 0.0) or 0.0)
+                    phone_wc = float(data.get("angular", 0.0) or 0.0)
                     last_phone_cmd_time = time.time()
                 elif data.get("type") == "motor_state":
                     phone_motor_enable = bool(data.get("enable"))
