@@ -294,14 +294,14 @@ if __name__ == "__main__":
 
     start_server = websockets.serve(
         handle_websocket, 
-        # "192.168.100.102",
-        "100.79.128.21",
+        "192.168.100.102",
+        # "100.79.128.21",
         9090, 
         ssl=ssl_context
     )
     
-    # print("FrogBoard Server started at wss://192.168.100.102:9090")
-    print("FrogBoard Server started at wss://100.79.128.21:9090")
+    print("FrogBoard Server started at wss://192.168.100.102:9090")
+    # print("FrogBoard Server started at wss://100.79.128.21:9090")
     
     loop.run_until_complete(start_server)
     loop.run_forever()
