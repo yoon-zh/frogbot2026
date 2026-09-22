@@ -66,10 +66,12 @@ def serial_proxy_thread(loop):
 
     while True:
         try:
-            r, w, x = select.select([master_tx, ser.fileno()], [], [], 0.05)
-        except Exception as e:
-            time.sleep(0.1)
-            continue
+            try:
+                r, w, x = select.select([master_tx, ser.fileno()], [], [], 0.05)
+            except Exception as e:
+                print(f"Exception in select loop: {e}")
+                time.sleep(0.1)
+                continue
 
         now = time.time()
         phone_active = (now - last_phone_cmd_time <= 0.5)
@@ -178,6 +180,10 @@ def serial_proxy_thread(loop):
                         except OSError:
                             pass
                         last_idle_send = now
+        except Exception as e:
+            print(f"FATAL ERROR in serial_proxy_thread: {e}")
+            traceback.print_exc()
+            time.sleep(1)
 
 async def handle_websocket(websocket, path=None):
     global connected_clients, phone_vcx, phone_wc, last_phone_cmd_time, phone_motor_enable
