@@ -14,6 +14,7 @@ import select
 import threading
 import queue
 import ssl
+import traceback
 
 REAL_SERIAL_PORT = "/dev/serial_twistctl"
 VIRTUAL_SERIAL_TX = "/tmp/virtual_twist_tx"
@@ -159,31 +160,36 @@ async def handle_websocket(websocket, path=None):
     await broadcast_state()
     try:
         async for message in websocket:
-            data = json.loads(message)
-            if data.get("type") == "joystick":
-                phone_vcx = float(data.get("linear", 0.0))
-                phone_wc = float(data.get("angular", 0.0))
-                last_phone_cmd_time = time.time()
-            elif data.get("type") == "motor_state":
-                enable = data.get("enable")
-                if enable:
-                    serial_cmd_queue.put(b"vcx=0.000,wc=0.000,en=1\n")
-                else:
-                    serial_cmd_queue.put(b"vcx=0.000,wc=0.000,en=0\n")
-            elif data.get("type") == "launch":
-                mode = data.get("mode")
-                asyncio.create_task(run_make_command(f"launch-{mode}"))
-            elif data.get("type") == "subscribe":
-                topic = data.get("topic")
-                if topic:
-                    task = asyncio.create_task(run_ros2_topic_echo(websocket, topic))
-                    active_subscriptions[websocket] = task
-            elif data.get("type") == "unsubscribe":
-                if websocket in active_subscriptions:
-                    active_subscriptions[websocket].cancel()
-                    del active_subscriptions[websocket]
-    except Exception:
-        pass
+            try:
+                data = json.loads(message)
+                if data.get("type") == "joystick":
+                    phone_vcx = float(data.get("linear", 0.0))
+                    phone_wc = float(data.get("angular", 0.0))
+                    last_phone_cmd_time = time.time()
+                elif data.get("type") == "motor_state":
+                    enable = data.get("enable")
+                    if enable:
+                        serial_cmd_queue.put(b"vcx=0.000,wc=0.000,en=1\n")
+                    else:
+                        serial_cmd_queue.put(b"vcx=0.000,wc=0.000,en=0\n")
+                elif data.get("type") == "launch":
+                    mode = data.get("mode")
+                    asyncio.create_task(run_make_command(f"launch-{mode}"))
+                elif data.get("type") == "subscribe":
+                    topic = data.get("topic")
+                    if topic:
+                        task = asyncio.create_task(run_ros2_topic_echo(websocket, topic))
+                        active_subscriptions[websocket] = task
+                elif data.get("type") == "unsubscribe":
+                    if websocket in active_subscriptions:
+                        active_subscriptions[websocket].cancel()
+                        del active_subscriptions[websocket]
+            except Exception as e:
+                print(f"Error handling message: {message}, Error: {e}")
+                traceback.print_exc()
+    except Exception as e:
+        print(f"Websocket connection error: {e}")
+        traceback.print_exc()
     finally:
         if websocket in active_subscriptions:
             active_subscriptions[websocket].cancel()
