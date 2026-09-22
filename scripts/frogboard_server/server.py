@@ -15,6 +15,7 @@ import threading
 import queue
 import ssl
 import traceback
+import fcntl
 
 REAL_SERIAL_PORT = "/dev/serial_twistctl"
 VIRTUAL_SERIAL_TX = "/tmp/virtual_twist_tx"
@@ -34,6 +35,9 @@ phone_motor_enable = False
 def create_pty(path):
     master, slave = pty.openpty()
     tty.setraw(slave)
+    # Set master to non-blocking to prevent thread deadlocks
+    flags = fcntl.fcntl(master, fcntl.F_GETFL)
+    fcntl.fcntl(master, fcntl.F_SETFL, flags | os.O_NONBLOCK)
     if os.path.exists(path):
         try:
             os.remove(path)
