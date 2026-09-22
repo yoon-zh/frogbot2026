@@ -13,6 +13,7 @@ import tty
 import select
 import threading
 import queue
+import ssl
 
 REAL_SERIAL_PORT = "/dev/serial_twistctl"
 VIRTUAL_SERIAL_TX = "/tmp/virtual_twist_tx"
