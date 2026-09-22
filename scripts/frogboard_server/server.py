@@ -31,7 +31,7 @@ active_subscriptions = {}
 
 def create_pty(path):
     master, slave = pty.openpty()
-    tty.cfmakeraw(slave)
+    tty.setraw(slave)
     if os.path.exists(path):
         try:
             os.remove(path)
@@ -276,10 +276,14 @@ async def close_all_connections():
         await ws.close(1000, "Force disconnected by make kill-phones")
 
 def handle_sigusr1(signum, frame):
-    asyncio.run_coroutine_threadsafe(close_all_connections(), loop)
+    if loop is not None:
+        asyncio.run_coroutine_threadsafe(close_all_connections(), loop)
 
-if __name__ == "__main__":
-    loop = asyncio.get_event_loop()
+loop = None
+
+async def main():
+    global loop
+    loop = asyncio.get_running_loop()
     signal.signal(signal.SIGUSR1, handle_sigusr1)
 
     proxy_thread = threading.Thread(target=serial_proxy_thread, args=(loop,), daemon=True)
@@ -293,16 +297,20 @@ if __name__ == "__main__":
         keyfile="/home/badger/frogboard-cert/robotfrogboard.yoonzh.com.key"
     )
 
-    start_server = websockets.serve(
+    async with websockets.serve(
         handle_websocket, 
         "192.168.100.102",
         # "100.79.128.21",
         9090, 
         ssl=ssl_context
-    )
-    
-    print("FrogBoard Server started at wss://192.168.100.102:9090")
-    # print("FrogBoard Server started at wss://100.79.128.21:9090")
-    
-    loop.run_until_complete(start_server)
-    loop.run_forever()
+    ):
+        print("FrogBoard Server started at wss://192.168.100.102:9090")
+        # print("FrogBoard Server started at wss://100.79.128.21:9090")
+        
+        await asyncio.Future()
+
+if __name__ == "__main__":
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        pass
