@@ -29,6 +29,7 @@ phone_wc = 0.0
 serial_cmd_queue = queue.Queue()
 active_mode = None
 active_subscriptions = {}
+phone_motor_enable = False
 
 def create_pty(path):
     master, slave = pty.openpty()
@@ -61,6 +62,7 @@ def serial_proxy_thread(loop):
     serial_buffer = b""
     last_phone_send = time.time()
     last_idle_send = time.time()
+    last_ros_cmd_time = 0
 
     while True:
         try:
@@ -141,17 +143,30 @@ def serial_proxy_thread(loop):
                             pass
             else:
                 # Phone idle -> let ROS (TX PTY) through
+                ros_sent = False
                 if master_tx in r:
                     try:
                         data = os.read(master_tx, 1024)
                         if data:
                             ser.write(data)
+                            last_ros_cmd_time = now
+                            ros_sent = True
                     except OSError as e:
                         if e.errno != 5: # Ignore EIO
                             pass
+                
+                # If ROS hasn't sent commands recently, send keep-alive based on phone_motor_enable
+                if not ros_sent and (now - last_ros_cmd_time > 0.5):
+                    if now - last_idle_send > 0.1:
+                        en_val = 1 if phone_motor_enable else 0
+                        try:
+                            ser.write(f"vcx=0.000,wc=0.000,en={en_val}\\n".encode())
+                        except OSError:
+                            pass
+                        last_idle_send = now
 
 async def handle_websocket(websocket, path=None):
-    global connected_clients, phone_vcx, phone_wc, last_phone_cmd_time
+    global connected_clients, phone_vcx, phone_wc, last_phone_cmd_time, phone_motor_enable
     if len(connected_clients) >= 8:
         await websocket.close(1008, "Max connections reached")
         return
@@ -167,11 +182,15 @@ async def handle_websocket(websocket, path=None):
                     phone_wc = float(data.get("angular", 0.0))
                     last_phone_cmd_time = time.time()
                 elif data.get("type") == "motor_state":
-                    enable = data.get("enable")
-                    if enable:
-                        serial_cmd_queue.put(b"vcx=0.000,wc=0.000,en=1\n")
+                    phone_motor_enable = bool(data.get("enable"))
+                    print(f"Received motor_state: enable={phone_motor_enable}")
+                    if phone_motor_enable:
+                        serial_cmd_queue.put(b"vcx=0.000,wc=0.000,en=1\\n")
                     else:
-                        serial_cmd_queue.put(b"vcx=0.000,wc=0.000,en=0\n")
+                        serial_cmd_queue.put(b"vcx=0.000,wc=0.000,en=0\\n")
+                elif data.get("type") == "greeting":
+                    msg = data.get("message", "")
+                    print(f"Received greeting from client: {msg}")
                 elif data.get("type") == "launch":
                     mode = data.get("mode")
                     asyncio.create_task(run_make_command(f"launch-{mode}"))
