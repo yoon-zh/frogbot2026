@@ -132,8 +132,9 @@ def serial_proxy_thread(loop):
                 # Phone joystick active -> override ROS
                 if now - last_phone_send > 0.05:
                     en_val = 1 if phone_motor_enable else 0
-                    cmd = f"vcx={phone_vcx:.3f},wc={phone_wc:.3f},en={en_val}\\n"
+                    cmd = f"vcx={phone_vcx:.3f},wc={phone_wc:.3f},en={en_val}\n"
                     try:
+                        print(f"Sending to serial: {cmd.strip()}")
                         ser.write(cmd.encode())
                     except OSError:
                         pass
@@ -165,12 +166,13 @@ def serial_proxy_thread(loop):
                             pass
                         time.sleep(0.01)
                 
-                # If ROS hasn't sent commands recently, send keep-alive based on phone_motor_enable
                 if not ros_sent and (now - last_ros_cmd_time > 0.5):
                     if now - last_idle_send > 0.1:
                         en_val = 1 if phone_motor_enable else 0
+                        cmd = f"vcx=0.000,wc=0.000,en={en_val}\n"
                         try:
-                            ser.write(f"vcx=0.000,wc=0.000,en={en_val}\\n".encode())
+                            print(f"Sending to serial: {cmd.strip()}")
+                            ser.write(cmd.encode())
                         except OSError:
                             pass
                         last_idle_send = now
@@ -195,9 +197,9 @@ async def handle_websocket(websocket, path=None):
                     phone_motor_enable = bool(data.get("enable"))
                     print(f"Received motor_state: enable={phone_motor_enable}")
                     if phone_motor_enable:
-                        serial_cmd_queue.put(b"vcx=0.000,wc=0.000,en=1\\n")
+                        serial_cmd_queue.put(b"vcx=0.000,wc=0.000,en=1\n")
                     else:
-                        serial_cmd_queue.put(b"vcx=0.000,wc=0.000,en=0\\n")
+                        serial_cmd_queue.put(b"vcx=0.000,wc=0.000,en=0\n")
                 elif data.get("type") == "greeting":
                     msg = data.get("message", "")
                     print(f"Received greeting from client: {msg}")
