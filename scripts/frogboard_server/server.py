@@ -286,8 +286,20 @@ if __name__ == "__main__":
     
     loop.create_task(monitor_active_mode())
 
-    start_server = websockets.serve(handle_websocket, "192.168.100.102", 9090)
-    print("FrogBoard Server started at ws://192.168.100.102:9090")
+    ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    ssl_context.load_cert_chain(
+        certfile="/home/badger/frogboard-cert/fullchain.cer",
+        keyfile="/home/badger/frogboard-cert/robotfrogboard.yoonzh.com.key"
+    )
+
+    start_server = websockets.serve(
+        handle_websocket, 
+        "192.168.100.102", 
+        9090, 
+        ssl=ssl_context
+    )
+    
+    print("FrogBoard Server started at wss://192.168.100.102:9090")
     
     loop.run_until_complete(start_server)
     loop.run_forever()
