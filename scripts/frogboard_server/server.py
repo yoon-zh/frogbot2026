@@ -104,6 +104,7 @@ def serial_proxy_thread(loop):
         while not serial_cmd_queue.empty():
             cmd_bytes = serial_cmd_queue.get_nowait()
             try:
+                print(f"Explicit motor queue command: {cmd_bytes.strip()}")
                 ser.write(cmd_bytes)
             except OSError:
                 pass
@@ -156,6 +157,7 @@ def serial_proxy_thread(loop):
                     try:
                         data = os.read(master_tx, 1024)
                         if data:
+                            print(f"Forwarding ROS command: {data.strip()}")
                             ser.write(data)
                             last_ros_cmd_time = now
                             ros_sent = True
@@ -189,6 +191,9 @@ async def handle_websocket(websocket, path=None):
         async for message in websocket:
             try:
                 data = json.loads(message)
+                # Print every incoming websocket message to debug
+                print(f"Received WS: {data}")
+                
                 if data.get("type") == "joystick":
                     phone_vcx = float(data.get("linear", 0.0) or 0.0)
                     phone_wc = float(data.get("angular", 0.0) or 0.0)
