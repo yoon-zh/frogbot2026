@@ -149,7 +149,7 @@ def serial_proxy_thread(loop):
                         if e.errno != 5: # Ignore EIO
                             pass
 
-async def handle_websocket(websocket, path):
+async def handle_websocket(websocket, path=None):
     global connected_clients, phone_vcx, phone_wc, last_phone_cmd_time
     if len(connected_clients) >= 8:
         await websocket.close(1008, "Max connections reached")
