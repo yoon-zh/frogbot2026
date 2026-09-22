@@ -42,10 +42,11 @@ void Joystick_motor_start(void)
         brake_flag = 0;
 	}
 
-    // 处理X按钮关闭
-    if (PS2_KEY == 16 || 
-        ((PS2_LY == 255) && (PS2_LX == 255) && (PS2_RX == 255) && (PS2_RY == 255)) || 
-        ((PS2_LY == 128) && (PS2_LX == 128) && (PS2_RX == 128) && (PS2_RY == 128))) // X按钮关闭
+    // 处理X按钮关闭或手柄断开
+    int is_ps2_disconnected = ((PS2_LY == 255) && (PS2_LX == 255) && (PS2_RX == 255) && (PS2_RY == 255)) || 
+                              ((PS2_LY == 128) && (PS2_LX == 128) && (PS2_RX == 128) && (PS2_RY == 128));
+
+    if (PS2_KEY == 16 || (control_mode == 0 && is_ps2_disconnected)) // X按钮关闭
     {
         control_mode = 0;
         brake_flag = 0;
