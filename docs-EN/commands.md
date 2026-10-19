@@ -1005,7 +1005,7 @@ From your phone or computer:
 
 1. Connect to the robot's Wi-Fi
 2. Open a browser, enter [frogboard.yoonzh.com](https://frogboard.yoonzh.com/)
-3. Enter the IP address: `192.168.100.102` and the port `9090`, then save
+3. Enter the address: `robotfrogboard.yoonzh.com` and the port `9090`, then save
 4. Check the logs to see connection status
 
 ### How to disconnect

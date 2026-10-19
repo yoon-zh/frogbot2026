@@ -351,12 +351,13 @@ async def main():
 
     async with websockets.serve(
         handle_websocket, 
-        "192.168.100.102",
+        "192.168.100.100",
+        # "192.168.100.102", # updated 2026/10/19
         # "100.79.128.21",
         9090, 
         ssl=ssl_context
     ):
-        print("FrogBoard Server started at wss://192.168.100.102:9090")
+        print("FrogBoard Server started at wss://192.168.100.100:9090")
         # print("FrogBoard Server started at wss://100.79.128.21:9090")
         
         await asyncio.Future()
