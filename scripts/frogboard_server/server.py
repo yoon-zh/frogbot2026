@@ -12,10 +12,11 @@ import sys
 import tty
 import select
 import threading
-import queue
 import ssl
 import traceback
 import fcntl
+
+import protocol
 
 REAL_SERIAL_PORT = "/dev/serial_twistctl"
 VIRTUAL_SERIAL_TX = "/tmp/virtual_twist_tx"
@@ -27,17 +28,17 @@ ps2_connected = False
 last_phone_cmd_time = 0
 phone_vcx = 0.0
 phone_wc = 0.0
-serial_cmd_queue = queue.Queue()
 active_mode = None
 active_subscriptions = {}
-phone_motor_enable = False
+phone_state = protocol.PhoneControlState()  # enable button -> en=0/1/2 codes
+chassis_ctrl_mode = None                    # last ctrl_mode reported by the STM32
 
 PHONE_ACTIVE_TIMEOUT_S = 0.5   # joystick considered idle after this long without a message
 PHONE_SEND_PERIOD_S = 0.05     # 20 Hz while the phone joystick is active
-IDLE_SEND_PERIOD_S = 0.1       # 10 Hz heartbeat (STM32 watchdog times out after 500 ms)
+IDLE_SEND_PERIOD_S = 0.1       # 10 Hz heartbeat (STM32 serial timeout is 250 ms)
+MIN_TX_GAP_S = 0.04            # the STM32 frames commands by UART idle gap: never send closer than this
 STATUS_PRINT_PERIOD_S = 1.0    # diagnostic summary rate
-ZERO_DISABLE_CMD = b"vcx=0.000,wc=0.000,en=0\n"
-ZERO_ENABLE_CMD = b"vcx=0.000,wc=0.000,en=1\n"
+ZERO_DISABLE_CMD = protocol.format_command(0.0, 0.0, protocol.EN_DISABLE)
 
 # Telemetry field 17 (index 16) reported by the STM32 firmware (see Serial_Output in main.c):
 #   0 = serial control active, 1 = PS2 joystick mode, 2 = motors disabled / braking
@@ -81,7 +82,7 @@ def read_pty(fd):
     return data
 
 def serial_proxy_thread(loop):
-    global ps2_connected
+    global ps2_connected, chassis_ctrl_mode
     try:
         master_tx, slave_tx = create_pty(VIRTUAL_SERIAL_TX)
         master_rx, slave_rx = create_pty(VIRTUAL_SERIAL_RX)
@@ -92,6 +93,7 @@ def serial_proxy_thread(loop):
     ser = open_real_serial()
 
     serial_buffer = b""
+    last_tx_time = 0.0
     last_phone_send = 0.0
     last_idle_send = 0.0
     last_ros_cmd_time = 0.0
@@ -112,8 +114,9 @@ def serial_proxy_thread(loop):
 
     def send(cmd_bytes):
         # SerialException propagates to the outer handler, which reopens the port
-        nonlocal tx_count, last_tx_cmd
+        nonlocal tx_count, last_tx_cmd, last_tx_time
         ser.write(cmd_bytes)
+        last_tx_time = time.time()
         tx_count += 1
         last_tx_cmd = cmd_bytes.decode("ascii", errors="replace").strip()
 
@@ -121,7 +124,10 @@ def serial_proxy_thread(loop):
         try:
             r, _, _ = select.select([master_tx, ser.fileno()], [], [], 0.05)
             now = time.time()
-            phone_active = (now - last_phone_cmd_time <= PHONE_ACTIVE_TIMEOUT_S)
+            # Joystick traffic, or an Enable/Disable press still being (re)sent
+            phone_active = ((now - last_phone_cmd_time <= PHONE_ACTIVE_TIMEOUT_S)
+                            or phone_state.override_active(now))
+            can_send = (now - last_tx_time) >= MIN_TX_GAP_S
 
             # 1. Read from REAL serial, forward to RX PTY (for ROS) and parse telemetry
             if ser.fileno() in r:
@@ -150,6 +156,13 @@ def serial_proxy_thread(loop):
                             try:
                                 if len(parts) >= 17:
                                     last_ctrl_mode = int(parts[16])
+                                    if last_ctrl_mode != chassis_ctrl_mode:
+                                        chassis_ctrl_mode = last_ctrl_mode
+                                        asyncio.run_coroutine_threadsafe(broadcast_state(), loop)
+                                    if phone_state.sync_from_chassis(last_ctrl_mode, now):
+                                        print("[STM32] reports motors disabled (PS2 brake / e-stop / "
+                                              "arm refused): clearing phone enable")
+                                        asyncio.run_coroutine_threadsafe(broadcast_state(), loop)
                                 if len(parts) >= 18:
                                     last_ps2_key = int(parts[17])
                                 if len(parts) >= 19:
@@ -169,59 +182,46 @@ def serial_proxy_thread(loop):
                             print(f"[STM32] non-telemetry line: {text[:120]!r}")
                             last_misc_print = now
 
-            # 2. Explicit one-shot commands from the WebSocket handler (enable/disable)
-            sent_explicit = False
-            while True:
-                try:
-                    cmd_bytes = serial_cmd_queue.get_nowait()
-                except queue.Empty:
-                    break
-                print(f"Explicit motor command -> serial: {cmd_bytes.strip()}")
-                send(cmd_bytes)
-                sent_explicit = True
-            if sent_explicit:
-                # The STM32 frames commands by UART idle gaps; a second command written
-                # back-to-back would merge into the same frame and be ignored. Delay the
-                # periodic sends to the next loop pass.
-                last_phone_send = now
-                last_idle_send = now
-
-            # 3. Control logic & multiplexing
+            # 2. Control logic & multiplexing. Every serial write is spaced by at least
+            #    MIN_TX_GAP_S: the STM32 frames commands by UART idle gap, so two
+            #    commands written back-to-back would merge into one (rejected) frame.
             if len(connected_clients) == 0 and not ps2_connected:
                 # No phone and no PS2: force zero speed + disable, discard ROS commands
-                if now - last_idle_send > IDLE_SEND_PERIOD_S:
+                if can_send and now - last_idle_send > IDLE_SEND_PERIOD_S:
                     send(ZERO_DISABLE_CMD)
                     last_idle_send = now
                 if master_tx in r:
                     read_pty(master_tx)
             elif phone_active:
-                # Phone joystick active -> override ROS
-                if now - last_phone_send > PHONE_SEND_PERIOD_S:
-                    en_val = 1 if phone_motor_enable else 0
-                    cmd = f"vcx={phone_vcx:.3f},wc={phone_wc:.3f},en={en_val}\n"
-                    send(cmd.encode())
+                # Phone joystick / Enable / Disable active -> override ROS
+                if can_send and now - last_phone_send > PHONE_SEND_PERIOD_S:
+                    send(phone_state.build_command(phone_vcx, phone_wc, now))
                     last_phone_send = now
+                    last_idle_send = now
                 if master_tx in r:
                     read_pty(master_tx)  # discard ROS while the phone has control
             else:
                 # Phone idle -> let ROS (TX PTY) through
                 ros_sent = False
-                if master_tx in r:
+                if master_tx in r and can_send:
                     data = read_pty(master_tx)
                     if data:
                         ser.write(data)
+                        last_tx_time = now
                         ros_fwd_count += 1
                         last_ros_cmd_time = now
                         ros_sent = True
+                elif master_tx in r:
+                    read_pty(master_tx)  # too soon after the last frame: drop (ROS resends)
 
-                # No ROS traffic: heartbeat so the STM32 watchdog (500 ms) stays fed
-                if not ros_sent and (now - last_ros_cmd_time > PHONE_ACTIVE_TIMEOUT_S):
+                # No ROS traffic: heartbeat so the STM32 serial timeout (250 ms) stays fed
+                if (not ros_sent and can_send
+                        and (now - last_ros_cmd_time > PHONE_ACTIVE_TIMEOUT_S)):
                     if now - last_idle_send > IDLE_SEND_PERIOD_S:
-                        en_val = 1 if phone_motor_enable else 0
-                        send(f"vcx=0.000,wc=0.000,en={en_val}\n".encode())
+                        send(phone_state.build_command(0.0, 0.0, now))
                         last_idle_send = now
 
-            # 4. Diagnostics summary
+            # 3. Diagnostics summary
             if now - last_status_print >= STATUS_PRINT_PERIOD_S:
                 if telemetry_count == 0:
                     stm = "NO TELEMETRY from STM32"
@@ -230,12 +230,14 @@ def serial_proxy_thread(loop):
                     stm = (f"fields={last_fields} ctrl_mode={mode} "
                            f"ps2_key={last_ps2_key} ps2={last_ps2_flag}")
                     if last_fields < 19:
-                        stm += " [OLD FIRMWARE? <19 fields: no en= / ps2_connected support]"
+                        stm += (" [<19 fields: firmware does not report ctrl_mode / ps2_connected;"
+                                " reflash the en=-aware firmware]")
                 print(
                     f"[STATUS] {stm} | tx={tx_count}/s last_tx='{last_tx_cmd}' "
                     f"ros_fwd={ros_fwd_count}/s | echoes={echo_count}/s last_echo='{last_echo[:60]}' | "
                     f"clients={len(connected_clients)} phone_active={phone_active} "
-                    f"enable={phone_motor_enable} vcx={phone_vcx:.3f} wc={phone_wc:.3f}"
+                    f"enable={phone_state.enabled} en={phone_state.en_code(now)} "
+                    f"vcx={phone_vcx:.3f} wc={phone_wc:.3f}"
                 )
                 last_status_print = now
                 tx_count = ros_fwd_count = echo_count = telemetry_count = 0
@@ -256,7 +258,7 @@ def serial_proxy_thread(loop):
             time.sleep(0.1)
 
 async def handle_websocket(websocket, path=None):
-    global connected_clients, phone_vcx, phone_wc, last_phone_cmd_time, phone_motor_enable
+    global connected_clients, phone_vcx, phone_wc, last_phone_cmd_time
     if len(connected_clients) >= 8:
         await websocket.close(1008, "Max connections reached")
         return
@@ -277,12 +279,11 @@ async def handle_websocket(websocket, path=None):
                     phone_wc = float(data.get("angular", 0.0) or 0.0)
                     last_phone_cmd_time = time.time()
                 elif data.get("type") == "motor_state":
-                    phone_motor_enable = bool(data.get("enable"))
-                    print(f"Received motor_state: enable={phone_motor_enable}")
-                    if phone_motor_enable:
-                        serial_cmd_queue.put(ZERO_ENABLE_CMD)
-                    else:
-                        serial_cmd_queue.put(ZERO_DISABLE_CMD)
+                    enable = bool(data.get("enable"))
+                    phone_state.set_enabled(enable, time.time())
+                    print(f"Received motor_state: enable={enable} -> "
+                          f"{'arm (en=2) pulse' if enable else 'disable (en=0, active brake)'}")
+                    await broadcast_state()
                 elif data.get("type") == "greeting":
                     msg = data.get("message", "")
                     print(f"Received greeting from client: {msg}")
@@ -310,12 +311,11 @@ async def handle_websocket(websocket, path=None):
             del active_subscriptions[websocket]
         connected_clients.discard(websocket)
         if len(connected_clients) == 0:
-            # Safety: last phone left -> forget its enable state and speeds
-            phone_motor_enable = False
+            # Safety: last phone left -> behave as an explicit Disable and forget speeds
+            phone_state.reset(time.time())
             phone_vcx = 0.0
             phone_wc = 0.0
             last_phone_cmd_time = 0
-            serial_cmd_queue.put(ZERO_DISABLE_CMD)
             print("Last client disconnected: motors disabled, phone state reset")
         await broadcast_state()
 
@@ -324,7 +324,9 @@ async def broadcast_state():
         "type": "state",
         "connections": len(connected_clients),
         "ps2_connected": ps2_connected,
-        "active_mode": active_mode
+        "active_mode": active_mode,
+        "motor_enable": phone_state.enabled,
+        "ctrl_mode": chassis_ctrl_mode
     })
     if connected_clients:
         await asyncio.gather(*(ws.send(state) for ws in connected_clients), return_exceptions=True)

@@ -61,8 +61,8 @@
 | MCU | STM32F407XX (Cortex-M4), RM C Board |
 | Motor communication | CAN -> 4x RM3508 |
 | Upper-level communication | USB ttyACM0, 115200 baud |
-| Downlink protocol | vcx=X.XXX,wc=X.XXX\n |
-| Uplink protocol | 16 float @100Hz |
+| Downlink protocol | `vcx=X.XXX,wc=X.XXX[,en=N]\n`; `en`: 0=disable (active brake, edge-triggered), 1=normal (never arms; ROS), 2=arm (phone; needs ~0 speed, serial source, no e-stop) |
+| Uplink protocol | 16 float + ctrl_mode (0=serial, 1=gamepad, 2=disabled/braking) + ps2_key (always 0) + ps2_connected @100Hz |
 | PID | Kp=10, Ki=100, Kd=0, MaxOutput=15000 |
 | Device file | /dev/serial_twistctl |
 
@@ -85,8 +85,8 @@
 | Type | 2.4 GHz wireless gamepad (PS2 compatible) |
 | Left stick | Linear velocity |
 | Right stick | Angular velocity |
-| Buttons | Y=enable, X=disable/coast stop, B=damped active brake then zero-current release |
-| Priority | **Highest software disable is X**; the red physical e-stop overrides all software commands |
+| Buttons | Y=arm (sticks neutral), B=damped active brake then zero-current release, R2=gamepad source, L2=serial source (phone/ROS). The firmware has no X handler |
+| Priority | PS2 overrides the phone: with R2 selected, phone joystick and enable/disable are ignored; B brakes in any source. The red physical e-stop overrides all software commands |
 | Disconnect protection | Automatic disable on signal loss |
 
 ## 3. Computing Platform
