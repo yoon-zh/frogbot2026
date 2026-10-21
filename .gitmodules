@@ -1,0 +1,3 @@
+[submodule "src/firmware/frogbot-stm32"]
+	path = src/firmware/frogbot-stm32
+	url = git@github.com:yoon-zh/frogbot-stm32.git
