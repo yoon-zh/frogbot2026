@@ -28,17 +28,40 @@ ps2_connected = False
 last_phone_cmd_time = 0
 phone_vcx = 0.0
 phone_wc = 0.0
+joystick_seq = 0  # bumped on every joystick message; lets the serial thread spot fresh data
 active_mode = None
 active_subscriptions = {}
 phone_state = protocol.PhoneControlState()  # enable button -> en=0/1/2 codes
 chassis_ctrl_mode = None                    # last ctrl_mode reported by the STM32
 
 PHONE_ACTIVE_TIMEOUT_S = 0.5   # joystick considered idle after this long without a message
-PHONE_SEND_PERIOD_S = 0.05     # 20 Hz while the phone joystick is active
+PHONE_SEND_PERIOD_S = 0.025    # 40 Hz max while the phone joystick is changing
+PHONE_KEEPALIVE_S = 0.05       # 20 Hz repeat of an unchanged value (STM32 serial timeout is 250 ms)
 IDLE_SEND_PERIOD_S = 0.1       # 10 Hz heartbeat (STM32 serial timeout is 250 ms)
-MIN_TX_GAP_S = 0.04            # the STM32 frames commands by UART idle gap: never send closer than this
+MIN_TX_GAP_S = 0.025           # the STM32 frames commands by UART idle gap: never send closer than this
+ACTIVE_POLL_S = 0.005          # serial-thread poll interval while the phone is driving
+IDLE_POLL_S = 0.05             # serial-thread poll interval otherwise
 STATUS_PRINT_PERIOD_S = 1.0    # diagnostic summary rate
 ZERO_DISABLE_CMD = protocol.format_command(0.0, 0.0, protocol.EN_DISABLE)
+
+# Set FROGBOARD_DEBUG_JOYSTICK=1 to print every joystick message (with the gap since the
+# previous one). Off by default: 20-60 prints/s to a terminal/journald costs CPU and can
+# itself add latency; the 1 Hz [STATUS] line summarises the same information.
+DEBUG_JOYSTICK = os.environ.get("FROGBOARD_DEBUG_JOYSTICK") == "1"
+
+link_stats = protocol.LinkStats()  # joystick rate / ws->serial latency / event-loop lag
+
+# Self-pipe: the websocket handler writes a byte after every joystick message so the
+# serial thread sends the new value immediately instead of at its next poll.
+_wake_r, _wake_w = os.pipe()
+os.set_blocking(_wake_r, False)
+os.set_blocking(_wake_w, False)
+
+def wake_serial_thread():
+    try:
+        os.write(_wake_w, b"x")
+    except OSError:
+        pass  # pipe full: the serial thread is already due to wake up
 
 # Telemetry field 17 (index 16) reported by the STM32 firmware (see Serial_Output in main.c):
 #   0 = serial control active, 1 = PS2 joystick mode, 2 = motors disabled / braking
@@ -120,9 +143,18 @@ def serial_proxy_thread(loop):
         tx_count += 1
         last_tx_cmd = cmd_bytes.decode("ascii", errors="replace").strip()
 
+    phone_active = False
+    select_timeout = IDLE_POLL_S
+    last_sent_seq = 0
+
     while True:
         try:
-            r, _, _ = select.select([master_tx, ser.fileno()], [], [], 0.05)
+            r, _, _ = select.select([master_tx, ser.fileno(), _wake_r], [], [], select_timeout)
+            if _wake_r in r:
+                try:
+                    os.read(_wake_r, 4096)
+                except OSError:
+                    pass
             now = time.time()
             # Joystick traffic, or an Enable/Disable press still being (re)sent
             phone_active = ((now - last_phone_cmd_time <= PHONE_ACTIVE_TIMEOUT_S)
@@ -193,9 +225,15 @@ def serial_proxy_thread(loop):
                 if master_tx in r:
                     read_pty(master_tx)
             elif phone_active:
-                # Phone joystick / Enable / Disable active -> override ROS
-                if can_send and now - last_phone_send > PHONE_SEND_PERIOD_S:
+                # Phone joystick / Enable / Disable active -> override ROS.
+                # A changed joystick value goes out as soon as the TX gap allows;
+                # an unchanged one (or an arm/disable pulse) repeats at the keepalive rate.
+                seq = joystick_seq
+                period = PHONE_SEND_PERIOD_S if seq != last_sent_seq else PHONE_KEEPALIVE_S
+                if can_send and now - last_phone_send > period:
                     send(phone_state.build_command(phone_vcx, phone_wc, now))
+                    link_stats.on_phone_send(time.time())
+                    last_sent_seq = seq
                     last_phone_send = now
                     last_idle_send = now
                 if master_tx in r:
@@ -221,6 +259,10 @@ def serial_proxy_thread(loop):
                         send(phone_state.build_command(0.0, 0.0, now))
                         last_idle_send = now
 
+            # Poll tightly while the phone is driving so a pending send is never
+            # delayed by a long select() timeout.
+            select_timeout = ACTIVE_POLL_S if phone_active else IDLE_POLL_S
+
             # 3. Diagnostics summary
             if now - last_status_print >= STATUS_PRINT_PERIOD_S:
                 if telemetry_count == 0:
@@ -232,6 +274,7 @@ def serial_proxy_thread(loop):
                     if last_fields < 19:
                         stm += (" [<19 fields: firmware does not report ctrl_mode / ps2_connected;"
                                 " reflash the en=-aware firmware]")
+                link = link_stats.snapshot_and_reset()
                 print(
                     f"[STATUS] {stm} | tx={tx_count}/s last_tx='{last_tx_cmd}' "
                     f"ros_fwd={ros_fwd_count}/s | echoes={echo_count}/s last_echo='{last_echo[:60]}' | "
@@ -239,6 +282,12 @@ def serial_proxy_thread(loop):
                     f"enable={phone_state.enabled} en={phone_state.en_code(now)} "
                     f"vcx={phone_vcx:.3f} wc={phone_wc:.3f}"
                 )
+                if link["joy_count"] or link["loop_lag_max_ms"] >= 20.0:
+                    print(
+                        f"[LINK] joy={link['joy_count']}/s max_gap={link['max_gap_ms']:.0f}ms "
+                        f"ws->tx avg={link['ws_to_tx_avg_ms']:.1f}ms max={link['ws_to_tx_max_ms']:.1f}ms "
+                        f"loop_lag_max={link['loop_lag_max_ms']:.0f}ms"
+                    )
                 last_status_print = now
                 tx_count = ros_fwd_count = echo_count = telemetry_count = 0
 
@@ -258,7 +307,7 @@ def serial_proxy_thread(loop):
             time.sleep(0.1)
 
 async def handle_websocket(websocket, path=None):
-    global connected_clients, phone_vcx, phone_wc, last_phone_cmd_time
+    global connected_clients, phone_vcx, phone_wc, last_phone_cmd_time, joystick_seq
     if len(connected_clients) >= 8:
         await websocket.close(1008, "Max connections reached")
         return
@@ -278,6 +327,12 @@ async def handle_websocket(websocket, path=None):
                     phone_vcx = float(data.get("linear", 0.0) or 0.0)
                     phone_wc = float(data.get("angular", 0.0) or 0.0)
                     last_phone_cmd_time = time.time()
+                    joystick_seq += 1
+                    gap = link_stats.on_joystick(last_phone_cmd_time)
+                    wake_serial_thread()
+                    if DEBUG_JOYSTICK:
+                        gap_ms = f"{gap * 1000:.0f}" if gap is not None else "-"
+                        print(f"[JOY] linear={phone_vcx:.3f} angular={phone_wc:.3f} gap={gap_ms}ms")
                 elif data.get("type") == "motor_state":
                     enable = bool(data.get("enable"))
                     phone_state.set_enabled(enable, time.time())
@@ -380,26 +435,38 @@ async def monitor_active_mode():
     global active_mode
     while True:
         try:
-            output = subprocess.check_output(["pgrep", "-a", "-f", "make launch-"]).decode()
+            # Async subprocess: a blocking check_output here would freeze the event loop
+            # (and every websocket message) for the duration of pgrep, every 2 s.
+            process = await asyncio.create_subprocess_exec(
+                "pgrep", "-a", "-f", "make launch-",
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.DEVNULL,
+            )
+            stdout, _ = await process.communicate()
             current_mode = None
-            for line in output.strip().split('\n'):
-                if 'make launch-' in line and not 'pgrep' in line:
-                    parts = line.split('make launch-')
-                    if len(parts) > 1:
-                        current_mode = parts[1].split()[0]
-                        break
-            
+            if process.returncode == 0:
+                for line in stdout.decode(errors="replace").strip().split('\n'):
+                    if 'make launch-' in line and not 'pgrep' in line:
+                        parts = line.split('make launch-')
+                        if len(parts) > 1:
+                            current_mode = parts[1].split()[0]
+                            break
+
             if current_mode != active_mode:
                 active_mode = current_mode
                 await broadcast_state()
-        except subprocess.CalledProcessError:
-            if active_mode is not None:
-                active_mode = None
-                await broadcast_state()
         except Exception:
             pass
-        
+
         await asyncio.sleep(2.0)
+
+async def monitor_loop_lag():
+    """Measure how late the event loop wakes up; large values mean something blocks it."""
+    interval = 0.05
+    while True:
+        start = time.monotonic()
+        await asyncio.sleep(interval)
+        link_stats.on_loop_lag(max(0.0, time.monotonic() - start - interval))
 
 async def close_all_connections():
     for ws in list(connected_clients):
@@ -420,6 +487,7 @@ async def main():
     proxy_thread.start()
     
     loop.create_task(monitor_active_mode())
+    loop.create_task(monitor_loop_lag())
 
     ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     ssl_context.load_cert_chain(
@@ -433,7 +501,8 @@ async def main():
         # "192.168.100.102", # updated 2026/10/19
         # "100.79.128.21",
         9090, 
-        ssl=ssl_context
+        ssl=ssl_context,
+        compression=None,  # tiny messages: per-message deflate only adds CPU/latency
     ):
         print("FrogBoard Server started at wss://192.168.100.100:9090")
         # print("FrogBoard Server started at wss://100.79.128.21:9090")

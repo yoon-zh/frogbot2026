@@ -17,6 +17,8 @@ Downlink frame (one per UART idle gap, newline terminated):
                    so one dropped UART frame cannot lose the request.
 """
 
+import threading
+
 EN_DISABLE = 0
 EN_NORMAL = 1
 EN_ARM = 2
@@ -97,3 +99,70 @@ class PhoneControlState:
             self.enabled = False
             return True
         return False
+
+
+class LinkStats:
+    """Thread-safe per-interval statistics for diagnosing joystick latency.
+
+    The asyncio thread calls ``on_joystick`` for every websocket joystick
+    message, the serial thread calls ``on_phone_send`` when it writes a phone
+    frame, and a monitor task calls ``on_loop_lag``. ``snapshot_and_reset``
+    returns (and clears) the numbers for the 1 Hz status line.
+    """
+
+    # Gaps longer than this are the user pausing, not link jitter.
+    ACTIVE_GAP_LIMIT_S = 1.0
+
+    def __init__(self):
+        self._lock = threading.Lock()
+        self._last_rx = None
+        self._pending_rx = None
+        self._reset()
+
+    def _reset(self):
+        self._joy_count = 0
+        self._max_gap = 0.0
+        self._lat_sum = 0.0
+        self._lat_n = 0
+        self._lat_max = 0.0
+        self._loop_lag_max = 0.0
+
+    def on_joystick(self, now):
+        """Record a joystick message; returns the gap since the previous one."""
+        with self._lock:
+            gap = None
+            if self._last_rx is not None:
+                gap = now - self._last_rx
+                if gap < self.ACTIVE_GAP_LIMIT_S:
+                    self._max_gap = max(self._max_gap, gap)
+            self._last_rx = now
+            self._pending_rx = now  # age of the newest value not yet written
+            self._joy_count += 1
+            return gap
+
+    def on_phone_send(self, now):
+        """Record that a phone frame was written; measures how stale its value was."""
+        with self._lock:
+            if self._pending_rx is None:
+                return
+            lat = now - self._pending_rx
+            self._pending_rx = None
+            self._lat_sum += lat
+            self._lat_n += 1
+            self._lat_max = max(self._lat_max, lat)
+
+    def on_loop_lag(self, lag):
+        with self._lock:
+            self._loop_lag_max = max(self._loop_lag_max, lag)
+
+    def snapshot_and_reset(self):
+        with self._lock:
+            snap = {
+                "joy_count": self._joy_count,
+                "max_gap_ms": self._max_gap * 1000.0,
+                "ws_to_tx_avg_ms": (self._lat_sum / self._lat_n * 1000.0) if self._lat_n else 0.0,
+                "ws_to_tx_max_ms": self._lat_max * 1000.0,
+                "loop_lag_max_ms": self._loop_lag_max * 1000.0,
+            }
+            self._reset()
+            return snap
