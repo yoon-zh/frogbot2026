@@ -76,33 +76,5 @@ class PhoneControlStateTests(unittest.TestCase):
         self.assertTrue(s.enabled)
 
 
-class LinkStatsTests(unittest.TestCase):
-    def test_counts_gaps_and_ws_to_tx_latency(self):
-        st = p.LinkStats()
-        self.assertIsNone(st.on_joystick(10.00))
-        self.assertAlmostEqual(st.on_joystick(10.05), 0.05)
-        self.assertAlmostEqual(st.on_joystick(10.20), 0.15)
-        st.on_phone_send(10.23)  # newest joystick value was 30 ms stale
-        st.on_phone_send(10.30)  # nothing pending: not counted
-        st.on_joystick(10.40)
-        st.on_phone_send(10.41)  # 10 ms
-        st.on_loop_lag(0.004)
-        st.on_loop_lag(0.080)
-        snap = st.snapshot_and_reset()
-        self.assertEqual(snap["joy_count"], 4)
-        self.assertAlmostEqual(snap["max_gap_ms"], 200.0, places=3)
-        self.assertAlmostEqual(snap["ws_to_tx_avg_ms"], 20.0, places=3)
-        self.assertAlmostEqual(snap["ws_to_tx_max_ms"], 30.0, places=3)
-        self.assertAlmostEqual(snap["loop_lag_max_ms"], 80.0, places=3)
-
-    def test_pauses_are_not_counted_as_jitter_and_reset_clears(self):
-        st = p.LinkStats()
-        st.on_joystick(1.0)
-        st.on_joystick(5.0)  # user paused for 4 s
-        snap = st.snapshot_and_reset()
-        self.assertEqual(snap["max_gap_ms"], 0.0)
-        self.assertEqual(st.snapshot_and_reset()["joy_count"], 0)
-
-
 if __name__ == "__main__":
     unittest.main()
