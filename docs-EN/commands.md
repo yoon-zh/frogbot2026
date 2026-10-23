@@ -35,6 +35,18 @@ source ~/.bashrc
 
 ## 1. Build and Source
 
+If prerequisite development tools (`vcs`, `rosdep`, `pip`) are not previously installed:
+
+```bash
+sudo apt-get update
+sudo apt-get install -y python3-vcstool python3-rosdep python3-pip
+sudo rosdep init || true
+rosdep update
+pip install websockets
+```
+
+Initial setup and build:
+
 ```bash
 # Initial dependency setup
 make setup
@@ -49,6 +61,9 @@ make build-sensor
 make build-perception
 make build-planning
 make build-navigation
+
+# Firmware build (STM32)
+make build-firmware
 
 # Single package build
 colcon build --packages-select <pkg> --symlink-install --parallel-workers 1
@@ -984,9 +999,10 @@ Whenever you want to update `~/.bashrc`, modify it first from [/scripts/.bashrc]
 
 ### Initial setup
 
-1. Install `websockets`
+1. Install `websockets` (and `pip` if not present)
 
 ```bash
+sudo apt-get install -y python3-pip
 pip install websockets
 ```
 

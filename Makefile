@@ -14,7 +14,7 @@ POST_COLLISION_KILL_PATTERN := '[p]ost_collision_cmd_conditioner(\\.py)?'
 PRIOR_MAP_TF_KILL_PATTERN := '[p]rior_map_tf_authority(\\.py)?'
 KILL_PATTERN := '[l]aunch_with_logs.sh|[r]os2 launch|[m]onitor_corridor_status(\.py)?|[r]os2 bag|[r]viz2|[f]oxglove_bridge|[f]oxglove_navigation_adapter_node|[l]ivox_ros_driver2_node|[l]io_node|[l]ocalizer_node|[i]nitialpose_relocalize_bridge(\\.py)?|[n]av2_cloud_retime(\\.py)?|[l]ocalization_cmd_gate(\\.py)?|[c]ollision_monitor|[i]ndoor_navigation_manager_node|[p]go_node|[r]tk_fgo_node|[r]tk_map_odom_corrector|[s]erial_twistctl_node|[s]erial_reader_node|[n]mea_serial_driver|[u]m982_rtk_node|[p]lanner_server|[c]ontroller_server|[b]ehavior_server|[b]t_navigator|[s]moother_server|[v]elocity_smoother|[l]ifecycle_manager|[w]aypoint_follower|[m]ap_server|[a]mcl|[c]omponent_container(_mt)?|[g]ps_route_runner|[g]ps_global_aligner|[g]ps_anchor_localizer|[r]oute_server|[g]oal_manager_node|[r]obot_state_publisher|[j]oint_state_publisher|[p]ointcloud_to_laserscan|[a]sync_slam_toolbox_node|[m]ap_saver_server|[f]rc_health_aggregator|[f]rc_event_marker|[f]rc_risk_pipeline|[f]rc_memory_manager|[f]rc_trial_runner|[s]urvey_node'
 
-.PHONY: setup build build-% launch-% kill kill-runtime clean ntrip-% frc-daily test
+.PHONY: setup build build-% launch-% kill kill-runtime kill-phones clean ntrip-% frc-daily test test-frogboard build-firmware
 
 # ==============================================================================
 # Auto-complete Helpers (Empty targets to trick bash/zsh tab-completion)
@@ -31,11 +31,16 @@ setup:
 	@echo ">>> 拉取第三方依赖..."
 	git config --global --unset http.proxy || true
 	git config --global --unset https.proxy || true
+	@command -v vcs >/dev/null 2>&1 || { echo ">>> 错误: 未安装 vcstool。请运行: sudo apt install python3-vcstool"; exit 1; }
 	vcs import < dependencies.repos
+	@echo ">>> 初始化与更新 Git 子模块..."
+	git submodule update --init --recursive
 	@mkdir -p src/third_party/navigation2/nav2_system_tests
 	@touch src/third_party/navigation2/nav2_system_tests/COLCON_IGNORE
 	@echo ">>> 安装 rosdep 依赖..."
 	rosdep install --from-paths src --ignore-src -y --skip-keys "slam_toolbox navigation2"
+	@echo ">>> 安装 Python 脚本依赖 (FrogBoard)..."
+	python3 -m pip install --upgrade websockets || true
 	@echo ">>> 环境配置完成"
 
 clean:
@@ -80,6 +85,11 @@ build-survey:
 build-frc:
 	$(COLCON_BUILD) --packages-select frc_msgs frc_bev frc_nodes_cpp frc_nodes frc_costmap_layer frc_bringup
 
+build-firmware:
+	@echo ">>> 编译 STM32 下位机固件..."
+	
+# $(MAKE) -C src/firmware/frogbot-stm32 # TO DO
+
 # ==============================================================================
 # Launch & Test Targets
 # ==============================================================================
@@ -88,8 +98,12 @@ build-frc:
 launch-%:
 	bash scripts/launch_with_logs.sh $*
 
-test:
+test: test-frogboard
 	$(ROS_SETUP) && colcon test && colcon test-result --verbose
+
+test-frogboard:
+	@echo ">>> 运行 FrogBoard 协议单元测试..."
+	python3 -m unittest discover -s scripts/frogboard_server
 
 # ==============================================================================
 # Operations & Scripts
