@@ -27,10 +27,11 @@ ntrip-logout ntrip-status ntrip-setup:
 # Setup & Clean
 # ==============================================================================
 
+# git config --global --unset http.proxy || true
+# git config --global --unset https.proxy || true
+
 setup:
 	@echo ">>> 拉取第三方依赖..."
-	git config --global --unset http.proxy || true
-	git config --global --unset https.proxy || true
 	@command -v vcs >/dev/null 2>&1 || { echo ">>> 错误: 未安装 vcstool。请运行: sudo apt install python3-vcstool"; exit 1; }
 	vcs import < dependencies.repos
 	@echo ">>> 初始化与更新 Git 子模块..."
