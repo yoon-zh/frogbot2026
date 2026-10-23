@@ -39,9 +39,9 @@ setup:
 	@mkdir -p src/third_party/navigation2/nav2_system_tests
 	@touch src/third_party/navigation2/nav2_system_tests/COLCON_IGNORE
 	@echo ">>> 安装 rosdep 依赖..."
-	rosdep install --from-paths src --ignore-src -y --skip-keys "slam_toolbox navigation2"
-	@echo ">>> 安装 Python 脚本依赖 (FrogBoard)..."
-	python3 -m pip install --upgrade websockets || true
+	rosdep install --from-paths src --ignore-src -y --skip-keys "slam_toolbox navigation2 gtsam GTSAM"
+	@echo ">>> 安装 Python 脚本依赖 (FrogBoard & Planning)..."
+	python3 -m pip install --upgrade websockets geojson || true
 	@echo ">>> 环境配置完成"
 
 clean:
