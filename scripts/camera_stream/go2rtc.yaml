@@ -1,0 +1,18 @@
+# ==============================================================================
+# FrogBot WebRTC Streaming Configuration (go2rtc)
+# Target Camera: Intel RealSense D455f (RGB Stream)
+# ==============================================================================
+
+api:
+  listen: ":1984"
+
+webrtc:
+  listen: ":8555"
+
+streams:
+  # Pull color feed from the RealSense RGB stream and transcode to H.264
+  # Note: RealSense D455f exposes multiple /dev/video* nodes (Depth, IR, Color, Metadata).
+  # We use the RGB node here.
+  robot_cam:
+    - ffmpeg:device?video=/dev/video4&input_format=mjpeg&video_size=640x480&framerate=30#video=h264
+    # - ffmpeg:device?video=/dev/video4&input_format=mjpeg&video_size=1280x720&framerate=30#video=h264

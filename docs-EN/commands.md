@@ -1036,3 +1036,27 @@ make kill-phones
 ```
 
 Note: This force-disconnects ALL devices from the robot connected through FrogBoard. The server will restart automatically after 3 seconds.
+
+## WebRTC Camera Stream (RealSense D455f)
+
+### Initial Setup
+
+```bash
+wget https://github.com/AlexxIT/go2rtc/releases/latest/download/go2rtc_linux_arm64 -O go2rtc
+chmod +x go2rtc
+sudo mv go2rtc /usr/local/bin/
+```
+
+### Set autorun (daemon)
+
+```bash
+sudo cp ~/frogbot2026/scripts/camera_stream/camera_stream.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable camera_stream.service
+sudo systemctl start camera_stream.service
+```
+
+### Stream Access Test
+
+- Stream URL (WebRTC): `http://192.168.100.100:1984/stream.html?src=robot_cam&mode=webrtc`
+- Dashboard: `http://192.168.100.100:1984`
