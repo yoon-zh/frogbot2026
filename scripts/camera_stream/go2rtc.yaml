@@ -3,6 +3,9 @@
 # Target Camera: Intel RealSense D455f (RGB Stream)
 # ==============================================================================
 
+ffmpeg:
+  bin: /usr/local/bin/ffmpeg
+
 api:
   listen: ":1984"
 

@@ -13,7 +13,35 @@ chmod +x go2rtc
 sudo mv go2rtc /usr/local/bin/
 ```
 
-### Step 2: Identify the RealSense RGB Device Node
+### Step 2: Install dependencies
+
+Install ffmpeg:
+```bash
+sudo apt update
+sudo apt install -y ffmpeg
+```
+
+Verify the version is at least 5.0:
+```bash
+ffmpeg -version
+```
+
+If not, then you need a static version of ffmpeg:
+
+```bash
+cd /tmp
+wget -O ffmpeg-arm64.tar.xz https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-arm64-static.tar.xz
+tar -xvf ffmpeg-arm64.tar.xz
+sudo cp ffmpeg-*-arm64-static/ffmpeg /usr/local/bin/
+sudo cp ffmpeg-*-arm64-static/ffprobe /usr/local/bin/
+sudo chmod +x /usr/local/bin/ffmpeg /usr/local/bin/ffprobe
+hash -r
+cd ~/frogbot2026
+```
+
+Then make sure the ffmpeg path is correct in [`go2rtc.yaml`](go2rtc.yaml).
+
+### Step 3: Identify the RealSense RGB Device Node
 The RealSense D455f registers multiple video nodes (Depth, IR, Color, Metadata). Run:
 
 ```bash
