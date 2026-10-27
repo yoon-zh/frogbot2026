@@ -57,6 +57,12 @@ class PhoneControlStateTests(unittest.TestCase):
         self.assertFalse(s.enabled)
         self.assertTrue(s.override_active(3.1))
 
+    def test_reset_when_not_enabled_does_not_trigger_disable(self):
+        s = p.PhoneControlState()
+        s.reset(3.0)
+        self.assertFalse(s.enabled)
+        self.assertFalse(s.override_active(3.1))
+
     def test_chassis_disabled_clears_enable_after_grace(self):
         s = p.PhoneControlState()
         s.set_enabled(True, 0.0)

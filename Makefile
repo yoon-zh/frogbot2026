@@ -141,7 +141,7 @@ kill-runtime:
 	pkill -KILL -f $(PRIOR_MAP_TF_KILL_PATTERN) || true
 	pkill -KILL -f $(KILL_PATTERN) || true
 	ros2 daemon stop >/dev/null 2>&1 || true
-	@for dev in /tmp/virtual_twist_tx /tmp/virtual_twist_rx /dev/wheeltec_gps /dev/rtk_um982; do \
+	@for dev in /dev/wheeltec_gps /dev/rtk_um982; do \
 		if [ -e "$$dev" ] && fuser "$$dev" >/dev/null 2>&1; then \
 			fuser -k "$$dev" >/dev/null 2>&1 || true; \
 		fi; \

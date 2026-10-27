@@ -310,8 +310,8 @@
 
 /serial_twistctl_node:
   ros__parameters:
-    # 下位机控制串口设备；改错会导致速度指令发不出去。
-    port: /dev/serial_twistctl
+    # 下位机控制串口设备（通过 server.py PTY 代理转接真实串口 /dev/serial_twistctl）。
+    port: /tmp/virtual_twist_tx
     # 控制串口波特率；必须和下位机固件一致。
     baudrate: 115200
     # 单次发送重试次数；调大更稳但控制延迟会增加。
@@ -328,8 +328,8 @@
 
 /serial_reader_node:
   ros__parameters:
-    # 底盘回读串口设备；通常与控制串口一致。
-    port: /dev/serial_twistctl
+    # 底盘回读串口设备（通过 server.py PTY 代理转接真实串口 /dev/serial_twistctl）。
+    port: /tmp/virtual_twist_rx
     # 回读串口波特率；必须和底盘一致。
     baud: 115200
 

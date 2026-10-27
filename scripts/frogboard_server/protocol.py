@@ -56,8 +56,12 @@ class PhoneControlState:
         self.enabled = enabled
 
     def reset(self, now):
-        """Safety reset (last client left): behave as an explicit Disable."""
-        self.set_enabled(False, now)
+        """Safety reset (last client left): behave as an explicit Disable only if previously enabled."""
+        if self.enabled:
+            self.set_enabled(False, now)
+        else:
+            self.arm_until = 0.0
+            self.disable_until = 0.0
 
     def in_arm_window(self, now):
         return self.enabled and now < self.arm_until

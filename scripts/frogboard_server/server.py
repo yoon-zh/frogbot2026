@@ -39,6 +39,7 @@ IDLE_SEND_PERIOD_S = 0.1       # 10 Hz heartbeat (STM32 serial timeout is 250 ms
 MIN_TX_GAP_S = 0.04            # the STM32 frames commands by UART idle gap: never send closer than this
 STATUS_PRINT_PERIOD_S = 1.0    # diagnostic summary rate
 ZERO_DISABLE_CMD = protocol.format_command(0.0, 0.0, protocol.EN_DISABLE)
+IDLE_NORMAL_CMD = protocol.format_command(0.0, 0.0, protocol.EN_NORMAL)
 
 # Telemetry field 17 (index 16) reported by the STM32 firmware (see Serial_Output in main.c):
 #   0 = serial control active, 1 = PS2 joystick mode, 2 = motors disabled / braking
@@ -50,7 +51,7 @@ def create_pty(path):
     # Set master to non-blocking to prevent thread deadlocks
     flags = fcntl.fcntl(master, fcntl.F_GETFL)
     fcntl.fcntl(master, fcntl.F_SETFL, flags | os.O_NONBLOCK)
-    if os.path.exists(path):
+    if os.path.lexists(path):
         try:
             os.remove(path)
         except OSError:
@@ -185,23 +186,16 @@ def serial_proxy_thread(loop):
             # 2. Control logic & multiplexing. Every serial write is spaced by at least
             #    MIN_TX_GAP_S: the STM32 frames commands by UART idle gap, so two
             #    commands written back-to-back would merge into one (rejected) frame.
-            if len(connected_clients) == 0 and not ps2_connected:
-                # No phone and no PS2: force zero speed + disable, discard ROS commands
-                if can_send and now - last_idle_send > IDLE_SEND_PERIOD_S:
-                    send(ZERO_DISABLE_CMD)
-                    last_idle_send = now
-                if master_tx in r:
-                    read_pty(master_tx)
-            elif phone_active:
+            if phone_active:
                 # Phone joystick / Enable / Disable active -> override ROS
                 if can_send and now - last_phone_send > PHONE_SEND_PERIOD_S:
                     send(phone_state.build_command(phone_vcx, phone_wc, now))
                     last_phone_send = now
                     last_idle_send = now
                 if master_tx in r:
-                    read_pty(master_tx)  # discard ROS while the phone has control
+                    read_pty(master_tx)  # discard ROS while the phone has active control
             else:
-                # Phone idle -> let ROS (TX PTY) through
+                # Phone idle or disconnected -> let ROS (TX PTY) through
                 ros_sent = False
                 if master_tx in r and can_send:
                     data = read_pty(master_tx)
@@ -214,11 +208,12 @@ def serial_proxy_thread(loop):
                 elif master_tx in r:
                     read_pty(master_tx)  # too soon after the last frame: drop (ROS resends)
 
-                # No ROS traffic: heartbeat so the STM32 serial timeout (250 ms) stays fed
+                # No ROS traffic and no phone traffic: neutral heartbeat (en=1, zero velocity)
+                # to keep the STM32 serial watchdog (250 ms) fed without disarming an armed chassis.
                 if (not ros_sent and can_send
                         and (now - last_ros_cmd_time > PHONE_ACTIVE_TIMEOUT_S)):
                     if now - last_idle_send > IDLE_SEND_PERIOD_S:
-                        send(phone_state.build_command(0.0, 0.0, now))
+                        send(IDLE_NORMAL_CMD)
                         last_idle_send = now
 
             # 3. Diagnostics summary
