@@ -10,6 +10,7 @@ api:
   tls_listen: ":1985"
   tls_cert: "/home/badger/frogboard-cert/fullchain.cer"
   tls_key: "/home/badger/frogboard-cert/robotfrogboard.yoonzh.com.key"
+  origin: "*"
 
 webrtc:
   listen: ":8555"

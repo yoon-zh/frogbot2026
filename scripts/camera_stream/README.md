@@ -78,6 +78,9 @@ Open a browser on your phone/laptop connected to the robot Wi-Fi:
 - Dashboard: `http://192.168.100.100:1984`
 - Low-latency stream: `http://192.168.100.100:1984/stream.html?src=robot_cam&mode=webrtc`
 
+to do
+`https://robotfrogboard.yoonzh.com:1985/stream.html?src=robot_cam&mode=webrtc`
+
 ***
 
 ## 3. Enable Systemd Daemon
