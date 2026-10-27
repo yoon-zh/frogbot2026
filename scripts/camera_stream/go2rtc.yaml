@@ -7,7 +7,9 @@ ffmpeg:
   bin: /usr/local/bin/ffmpeg
 
 api:
-  listen: ":1984"
+  tls_listen: ":1984"
+  tls_cert: "/home/badger/frogboard-cert/fullchain.cer"
+  tls_key: "/home/badger/frogboard-cert/robotfrogboard.yoonzh.com.key"
 
 webrtc:
   listen: ":8555"
