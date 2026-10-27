@@ -75,11 +75,8 @@ In the robot, run:
 go2rtc -config scripts/camera_stream/go2rtc.yaml
 ```
 Open a browser on your phone/laptop connected to the robot Wi-Fi:
-- Dashboard: `http://192.168.100.100:1984`
-- Low-latency stream: `http://192.168.100.100:1984/stream.html?src=robot_cam&mode=webrtc`
-
-to do
-`https://robotfrogboard.yoonzh.com:1985/stream.html?src=robot_cam&mode=webrtc`
+- Low-latency stream: `https://robotfrogboard.yoonzh.com:1985/stream.html?src=robot_cam&mode=webrtc`
+- Dashboard: `http://robotfrogboard.yoonzh.com:1984`
 
 ***
 

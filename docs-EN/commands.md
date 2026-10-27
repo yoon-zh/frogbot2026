@@ -1058,5 +1058,5 @@ sudo systemctl start camera_stream.service
 
 ### Stream Access Test
 
-- Stream URL (WebRTC): `http://192.168.100.100:1984/stream.html?src=robot_cam&mode=webrtc`
-- Dashboard: `http://192.168.100.100:1984`
+- Stream URL: `https://robotfrogboard.yoonzh.com:1985/stream.html?src=robot_cam&mode=webrtc`
+- Dashboard: `http://robotfrogboard.yoonzh.com:1984`
