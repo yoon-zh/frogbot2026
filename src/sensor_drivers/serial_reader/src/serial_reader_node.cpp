@@ -50,7 +50,7 @@ std::string getRuntimeRoot() {
         return std::string(runtime_root);
     }
     const char* home = std::getenv("HOME");
-    return std::string(home != nullptr ? home : "/home/jetson") + "/XJTLU-autonomous-vehicle/runtime-data";
+    return std::string(home != nullptr ? home : "/home/badger") + "/frogbot2026/runtime-data";
 }
 
 std::string getRuntimePath(const std::string& relative_path) {

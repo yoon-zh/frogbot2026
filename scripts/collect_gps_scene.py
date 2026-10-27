@@ -5,7 +5,7 @@ Interactive collector for a brand-new GPS scene bundle.
 This tool only uses /fix so that a brand-new scene can be collected before any
 scene-specific startup localization exists. It stores all data in one file:
 
-    ~/XJTLU-autonomous-vehicle/runtime-data/gnss/scene_gps_bundle.yaml
+    ~/frogbot2026/runtime-data/gnss/scene_gps_bundle.yaml
 """
 
 from __future__ import annotations
@@ -22,7 +22,7 @@ from rclpy.node import Node
 from sensor_msgs.msg import NavSatFix
 import yaml
 
-OUTPUT_DIR = Path.home() / "XJTLU-autonomous-vehicle/runtime-data" / "gnss"
+OUTPUT_DIR = Path.home() / "frogbot2026/runtime-data" / "gnss"
 OUTPUT_FILE = OUTPUT_DIR / "scene_gps_bundle.yaml"
 SAMPLE_COUNT = 10
 SAMPLE_TIMEOUT_S = 30.0

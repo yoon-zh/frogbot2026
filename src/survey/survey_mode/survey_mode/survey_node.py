@@ -28,7 +28,7 @@ class SurveyNode(Node):
         self.declare_parameter('confidence_guess', 0.6)
         self.declare_parameter('confidence_confirm', 0.8)
         self.declare_parameter('min_confirm_distance', 5.0)
-        self.declare_parameter('map_database_dir', '~/XJTLU-autonomous-vehicle/runtime-data/maps/indoor')
+        self.declare_parameter('map_database_dir', '~/frogbot2026/runtime-data/maps/indoor')
         
         # New parameters
         self.declare_parameter('global_frame_id', 'map')

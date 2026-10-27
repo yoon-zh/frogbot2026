@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-WORKSPACE_ROOT="${WORKSPACE_ROOT:-$HOME/XJTLU-autonomous-vehicle}"
+WORKSPACE_ROOT="${WORKSPACE_ROOT:-$HOME/frogbot2026}"
 if [[ $# -gt 0 ]]; then
   OUTPUT_ROOT="$1"
 elif [[ -n "${FYP_LOG_SESSION_DIR:-}" ]]; then
   OUTPUT_ROOT="$FYP_LOG_SESSION_DIR"
 else
-  OUTPUT_ROOT="$HOME/XJTLU-autonomous-vehicle/runtime-data/bags/run_$(date +%Y%m%d_%H%M%S)"
+  OUTPUT_ROOT="$HOME/frogbot2026/runtime-data/bags/run_$(date +%Y%m%d_%H%M%S)"
 fi
 BAG_PATH="$OUTPUT_ROOT/rosbag2"
 PROFILE="${PROFILE:-default}"

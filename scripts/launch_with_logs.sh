@@ -4,7 +4,7 @@ set -euo pipefail
 MODE="${1:-explore}"
 EXTRA_LAUNCH_ARGS=("${@:2}")
 SESSION=$(date +%Y-%m-%d-%H-%M-%S)
-SESSION_DIR="$HOME/XJTLU-autonomous-vehicle/runtime-data/logs/$SESSION"
+SESSION_DIR="$HOME/frogbot2026/runtime-data/logs/$SESSION"
 TEGRA_PID=""
 LAUNCH_PID=""
 CLEANUP_DONE=0
@@ -12,7 +12,7 @@ CLEANUP_DONE=0
 mkdir -p "$SESSION_DIR/console"
 mkdir -p "$SESSION_DIR/data"
 mkdir -p "$SESSION_DIR/system"
-ln -sfn "$SESSION_DIR" "$HOME/XJTLU-autonomous-vehicle/runtime-data/logs/latest"
+ln -sfn "$SESSION_DIR" "$HOME/frogbot2026/runtime-data/logs/latest"
 
 export ROS_LOG_DIR="$SESSION_DIR/console"
 export FYP_LOG_SESSION_DIR="$SESSION_DIR/data"
@@ -64,8 +64,8 @@ cat > "$SESSION_DIR/system/session_info.yaml" <<EOF
 mode: $MODE
 start_time: $(date -Iseconds)
 session_dir: $SESSION_DIR
-git_branch: $(cd ~/XJTLU-autonomous-vehicle && git branch --show-current 2>/dev/null || echo unknown)
-git_commit: $(cd ~/XJTLU-autonomous-vehicle && git rev-parse --short HEAD 2>/dev/null || echo unknown)
+git_branch: $(cd ~/frogbot2026 && git branch --show-current 2>/dev/null || echo unknown)
+git_commit: $(cd ~/frogbot2026 && git rev-parse --short HEAD 2>/dev/null || echo unknown)
 frc_mode: ${FRC_MODE:-off}
 ros_log_dir: $SESSION_DIR/console
 data_log_dir: $SESSION_DIR/data
@@ -82,7 +82,7 @@ cleanup_runtime_nodes
 
 set +u
 source /opt/ros/humble/setup.bash
-source ~/XJTLU-autonomous-vehicle/install/setup.bash
+source ~/frogbot2026/install/setup.bash
 set -u
 
 case "$MODE" in
@@ -131,7 +131,7 @@ if [[ "$MODE" == "travel" && -n "${FYP_USE_FOXGLOVE:-}" ]]; then
 fi
 
 if [[ "$MODE" == "corridor" && "${FYP_CORRIDOR_CONSOLE_MODE:-quiet}" != "raw" ]]; then
-  ROUTE_FILE="$HOME/XJTLU-autonomous-vehicle/runtime-data/gnss/current_route.yaml"
+  ROUTE_FILE="$HOME/frogbot2026/runtime-data/gnss/current_route.yaml"
   ROUTE_FIX_TIMEOUT_S=""
   if [[ -f "$ROUTE_FILE" ]]; then
     ROUTE_FIX_TIMEOUT_S="$(
@@ -168,7 +168,7 @@ if [[ "$MODE" == "corridor" && "${FYP_CORRIDOR_CONSOLE_MODE:-quiet}" != "raw" ]]
   LAUNCH_PID=$!
 
   set +e
-  python3 ~/XJTLU-autonomous-vehicle/scripts/monitor_corridor_status.py \
+  python3 ~/frogbot2026/scripts/monitor_corridor_status.py \
     --startup-timeout-s "$STARTUP_TIMEOUT_S" \
     --launch-log "$LAUNCH_STDOUT_LOG" \
     --launch-pid "$LAUNCH_PID"

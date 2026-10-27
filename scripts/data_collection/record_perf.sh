@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-OUTPUT_PATH="${1:-$HOME/XJTLU-autonomous-vehicle/runtime-data/perf/tegrastats_$(date +%Y%m%d_%H%M%S).log}"
+OUTPUT_PATH="${1:-$HOME/frogbot2026/runtime-data/perf/tegrastats_$(date +%Y%m%d_%H%M%S).log}"
 INTERVAL_MS="${TEGRASTATS_INTERVAL_MS:-1000}"
 
 mkdir -p "$(dirname "$OUTPUT_PATH")"
