@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-RUNTIME_ROOT="${FYP_RUNTIME_ROOT:-$HOME/XJTLU-autonomous-vehicle/runtime-data}"
-WORKSPACE_ROOT="${WORKSPACE_ROOT:-$HOME/XJTLU-autonomous-vehicle}"
+RUNTIME_ROOT="${FYP_RUNTIME_ROOT:-$HOME/frogbot2026/runtime-data}"
+WORKSPACE_ROOT="${WORKSPACE_ROOT:-$HOME/frogbot2026}"
 LEGACY_ROOT="${LEGACY_ROOT:-$HOME/2025_FYP}"
 
 mkdir -p "$RUNTIME_ROOT/config" "$RUNTIME_ROOT/gnss" "$RUNTIME_ROOT/planning" "$RUNTIME_ROOT/maps"

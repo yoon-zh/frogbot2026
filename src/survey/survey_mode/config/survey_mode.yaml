@@ -16,7 +16,7 @@
     min_confirm_distance: 1.5
     
     # The directory path where the previously saved maps and their localization descriptors (scan_context.yaml) are discovered and evaluated.
-    map_database_dir: '~/XJTLU-autonomous-vehicle/runtime-data/maps/indoor'
+    map_database_dir: '~/frogbot2026/runtime-data/maps/indoor'
     
     # The ROS 2 service name used to request a global relocalization score against the map database.
     localizer_service: '/localizer/global_relocalize'

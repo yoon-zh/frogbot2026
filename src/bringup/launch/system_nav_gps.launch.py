@@ -114,7 +114,7 @@ def _make_nav_gps_rtk_nav2_params(source_file):
 
 def generate_launch_description():
     bringup_share = get_package_share_directory("bringup")
-    runtime_scene_dir = os.path.expanduser("~/XJTLU-autonomous-vehicle/runtime-data/gnss/current_scene")
+    runtime_scene_dir = os.path.expanduser("~/frogbot2026/runtime-data/gnss/current_scene")
 
     default_scene_params = os.path.join(runtime_scene_dir, "master_params_scene.yaml")
     default_scene_points = os.path.join(runtime_scene_dir, "scene_points.yaml")
@@ -286,7 +286,7 @@ def generate_launch_description():
         session_root = os.path.dirname(session_data_dir)
     else:
         session_root = os.path.expanduser(
-            f"~/XJTLU-autonomous-vehicle/runtime-data/logs/{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}"
+            f"~/frogbot2026/runtime-data/logs/{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}"
         )
     bag_dir = os.path.join(session_root, "bag")
     os.makedirs(session_root, exist_ok=True)

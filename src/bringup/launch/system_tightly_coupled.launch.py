@@ -76,7 +76,7 @@ def generate_launch_description():
         session_root = os.path.dirname(session_data_dir)
     else:
         session_root = os.path.expanduser(
-            f"~/XJTLU-autonomous-vehicle/runtime-data/logs/{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}"
+            f"~/frogbot2026/runtime-data/logs/{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}"
         )
     bag_dir = os.path.join(session_root, "bag")
     os.makedirs(session_root, exist_ok=True)

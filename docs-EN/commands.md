@@ -35,6 +35,18 @@ source ~/.bashrc
 
 ## 1. Build and Source
 
+If prerequisite development tools (`vcs`, `rosdep`, `pip`) are not previously installed:
+
+```bash
+sudo apt-get update
+sudo apt-get install -y python3-vcstool python3-rosdep python3-pip
+sudo rosdep init || true
+rosdep update
+pip install websockets
+```
+
+Initial setup and build:
+
 ```bash
 # Initial dependency setup
 make setup
@@ -49,6 +61,9 @@ make build-sensor
 make build-perception
 make build-planning
 make build-navigation
+
+# Firmware build (STM32)
+make build-firmware
 
 # Single package build
 colcon build --packages-select <pkg> --symlink-install --parallel-workers 1
@@ -978,3 +993,70 @@ rc
 7. To test it, run: `s1`
 
 Whenever you want to update `~/.bashrc`, modify it first from [/scripts/.bashrc](/scripts/.bashrc), then follow the steps above to make sure we keep track of the file. Do not modify it in the Jetson without tracking it in this repo.
+
+
+## FrogBoard: Mobile App Controlling
+
+### Initial setup
+
+1. Install `websockets` (and `pip` if not present)
+
+```bash
+sudo apt-get install -y python3-pip
+pip install websockets
+```
+
+2. Set up server autorunning service
+
+```bash
+sudo cp ~/frogbot2026/scripts/frogboard_server/frogboard.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable frogboard.service
+sudo systemctl start frogboard.service
+```
+
+### How to use
+
+From your phone or computer:
+
+1. Connect to the robot's Wi-Fi
+2. Open a browser, enter [frogboard.yoonzh.com](https://frogboard.yoonzh.com/)
+3. Enter the address: `robotfrogboard.yoonzh.com` and the port `9090`, then save
+4. Check the logs to see connection status
+
+### How to disconnect
+
+There are three ways to disconnect:
+- Simply close the browser tab
+- Change Wi-Fi connection
+- From SSH, run:
+
+```bash
+make kill-phones
+```
+
+Note: This force-disconnects ALL devices from the robot connected through FrogBoard. The server will restart automatically after 3 seconds.
+
+## WebRTC Camera Stream (RealSense D455f)
+
+### Initial Setup
+
+```bash
+wget https://github.com/AlexxIT/go2rtc/releases/latest/download/go2rtc_linux_arm64 -O go2rtc
+chmod +x go2rtc
+sudo mv go2rtc /usr/local/bin/
+```
+
+### Set autorun (daemon)
+
+```bash
+sudo cp ~/frogbot2026/scripts/camera_stream/camera_stream.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable camera_stream.service
+sudo systemctl start camera_stream.service
+```
+
+### Stream Access Test
+
+- Stream URL: `https://robotfrogboard.yoonzh.com:1985/stream.html?src=robot_cam&mode=webrtc`
+- Dashboard: `http://robotfrogboard.yoonzh.com:1985`

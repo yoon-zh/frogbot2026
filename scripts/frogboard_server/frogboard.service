@@ -1,0 +1,16 @@
+[Unit]
+Description=FrogBoard App Server Daemon
+After=network.target
+
+[Service]
+Type=simple
+User=badger
+WorkingDirectory=/home/badger/frogbot2026
+ExecStart=/usr/bin/python3 /home/badger/frogbot2026/scripts/frogboard_server/server.py
+Restart=always
+RestartSec=3
+# Send signals like SIGUSR1 to the main process
+KillSignal=SIGTERM
+
+[Install]
+WantedBy=multi-user.target

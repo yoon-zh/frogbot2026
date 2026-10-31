@@ -37,7 +37,7 @@ std::string getRuntimeRoot() {
         return std::string(runtime_root);
     }
     const char* home = std::getenv("HOME");
-    return std::string(home != nullptr ? home : "/home/jetson") + "/XJTLU-autonomous-vehicle/runtime-data";
+    return std::string(home != nullptr ? home : "/home/badger") + "/frogbot2026/runtime-data";
 }
 
 std::string getRuntimePath(const std::string& relative_path) {
@@ -142,7 +142,7 @@ public:
         }
 
         // 声明端口参数
-        this->declare_parameter<std::string>("port", "/dev/serial_twistctl");
+        this->declare_parameter<std::string>("port", "/tmp/virtual_twist_tx");
         // 声明波特率参数
         this->declare_parameter<int>("baudrate", 115200);
         // 声明发送尝试次数参数

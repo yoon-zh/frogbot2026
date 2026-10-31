@@ -15,7 +15,7 @@ inline std::string formatTwistCommand(
   std::snprintf(
       command,
       sizeof(command),
-      "vcx=%.3f,wc=%.3f\n",
+      "vcx=%.3f,wc=%.3f,en=1\n",
       static_cast<float>(linear_x),
       static_cast<float>(angular_z * angular_z_scale));
   return std::string(command);

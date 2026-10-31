@@ -13,7 +13,7 @@ Usage:
     2. Wait for valid /gnss (gnss_calibration must complete first)
     3. Run: python3 scripts/collect_gps_points.py
     4. Drive to point, press Enter to stamp
-    5. Output: ~/XJTLU-autonomous-vehicle/runtime-data/gnss/collected_points.yaml
+    5. Output: ~/frogbot2026/runtime-data/gnss/collected_points.yaml
 """
 
 import rclpy
@@ -25,7 +25,7 @@ import math
 import time
 from datetime import datetime
 
-OUTPUT_DIR = os.path.expanduser("~/XJTLU-autonomous-vehicle/runtime-data/gnss")
+OUTPUT_DIR = os.path.expanduser("~/frogbot2026/runtime-data/gnss")
 OUTPUT_FILE = os.path.join(OUTPUT_DIR, "collected_points.yaml")
 
 SAMPLE_COUNT = 10

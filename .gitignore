@@ -47,11 +47,6 @@ runtime-data/
 docs/superpowers/plans/
 tmp/pdfs/
 
-# Firmware trees are ignored by default, except the vendored RM C Board snapshot.
-src/firmware/*
-!src/firmware/rm_c_board/
-!src/firmware/rm_c_board/**
-
 # Local-only project management files
 AGENTS.md
 CLAUDE.md

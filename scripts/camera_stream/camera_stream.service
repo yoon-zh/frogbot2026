@@ -1,0 +1,15 @@
+[Unit]
+Description=FrogBot WebRTC Camera Streamer Daemon (go2rtc)
+After=network.target
+
+[Service]
+Type=simple
+User=badger
+WorkingDirectory=/home/badger/frogbot2026
+ExecStart=/usr/local/bin/go2rtc -config /home/badger/frogbot2026/scripts/camera_stream/go2rtc.yaml
+Restart=always
+RestartSec=3
+KillSignal=SIGTERM
+
+[Install]
+WantedBy=multi-user.target

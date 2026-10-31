@@ -1,5 +1,5 @@
 # Bootstrap graph used for dispatcher smoke tests.
-# Replace this file with ~/XJTLU-autonomous-vehicle/runtime-data/gnss/collected_points.yaml after field collection.
+# Replace this file with ~/frogbot2026/runtime-data/gnss/collected_points.yaml after field collection.
 nodes:
   1:
     name: "前门口北拐角前"

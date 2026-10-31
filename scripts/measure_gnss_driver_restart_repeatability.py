@@ -47,7 +47,7 @@ def runtime_root() -> Path:
     env_root = os.environ.get("FYP_RUNTIME_ROOT")
     if env_root:
         return Path(env_root).expanduser()
-    return Path.home() / "XJTLU-autonomous-vehicle" / "runtime-data"
+    return Path.home() / "frogbot2026" / "runtime-data"
 
 
 def default_output_dir() -> Path:
@@ -792,7 +792,7 @@ def run_experiment(deps: RuntimeDeps, args: argparse.Namespace) -> tuple[Path, d
             if not args.takeover_existing_driver:
                 raise RuntimeError(
                     f"{args.topic} already has a publisher. Stop the running system first:\n"
-                    "  cd ~/XJTLU-autonomous-vehicle && make kill-runtime\n"
+                    "  cd ~/frogbot2026 && make kill-runtime\n"
                     "Then rerun this script. Use --takeover-existing-driver only if you "
                     "explicitly want the script to stop nmea_serial_driver."
                 )

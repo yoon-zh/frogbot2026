@@ -33,7 +33,7 @@ Action client:
 ## Build
 
 ```bash
-cd ~/XJTLU-autonomous-vehicle
+cd ~/frogbot2026
 colcon build --packages-select waypoint_collector --symlink-install --parallel-workers 1
 source install/setup.bash
 ```
@@ -49,7 +49,7 @@ make launch-indoor-nav
 Then run the collector in a second terminal:
 
 ```bash
-source ~/XJTLU-autonomous-vehicle/install/setup.bash
+source ~/frogbot2026/install/setup.bash
 ros2 run waypoint_collector waypoint_node
 ```
 

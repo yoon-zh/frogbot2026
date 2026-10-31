@@ -4,7 +4,7 @@ set -euo pipefail
 MODE="${1:-explore}"
 EXTRA_LAUNCH_ARGS=("${@:2}")
 SESSION=$(date +%Y-%m-%d-%H-%M-%S)
-SESSION_DIR="$HOME/XJTLU-autonomous-vehicle/runtime-data/logs/$SESSION"
+SESSION_DIR="$HOME/frogbot2026/runtime-data/logs/$SESSION"
 TEGRA_PID=""
 LAUNCH_PID=""
 CLEANUP_DONE=0
@@ -12,7 +12,7 @@ CLEANUP_DONE=0
 mkdir -p "$SESSION_DIR/console"
 mkdir -p "$SESSION_DIR/data"
 mkdir -p "$SESSION_DIR/system"
-ln -sfn "$SESSION_DIR" "$HOME/XJTLU-autonomous-vehicle/runtime-data/logs/latest"
+ln -sfn "$SESSION_DIR" "$HOME/frogbot2026/runtime-data/logs/latest"
 
 export ROS_LOG_DIR="$SESSION_DIR/console"
 export FYP_LOG_SESSION_DIR="$SESSION_DIR/data"
@@ -26,7 +26,8 @@ cleanup_runtime_nodes() {
   pkill -KILL -f '[p]rior_map_tf_authority(\.py)?' 2>/dev/null || true
   pkill -KILL -f '[r]os2 launch|[r]os2 bag|[r]viz2|[f]oxglove_bridge|[f]oxglove_navigation_adapter_node|[l]ivox_ros_driver2_node|[l]io_node|[l]ocalizer_node|[i]nitialpose_relocalize_bridge(\.py)?|[n]av2_cloud_retime(\.py)?|[l]ocalization_cmd_gate(\.py)?|[c]ollision_monitor|[i]ndoor_navigation_manager_node|[p]go_node|[r]tk_fgo_node|[r]tk_map_odom_corrector|[s]erial_twistctl_node|[s]erial_reader_node|[n]mea_serial_driver|[u]m982_rtk_node|[p]lanner_server|[c]ontroller_server|[b]ehavior_server|[b]t_navigator|[s]moother_server|[v]elocity_smoother|[l]ifecycle_manager|[w]aypoint_follower|[m]ap_server|[a]mcl|[c]omponent_container(_mt)?|[g]ps_route_runner|[g]ps_global_aligner|[g]ps_anchor_localizer|[r]oute_server|[g]oal_manager_node|[r]obot_state_publisher|[j]oint_state_publisher|[p]ointcloud_to_laserscan|[a]sync_slam_toolbox_node|[m]ap_saver_server|[m]onitor_corridor_status|[f]rc_health_aggregator|[f]rc_event_marker|[f]rc_risk_pipeline|[f]rc_memory_manager|[f]rc_trial_runner|[s]urvey_node' 2>/dev/null || true
   ros2 daemon stop 2>/dev/null || true
-  for dev in /dev/serial_twistctl /dev/wheeltec_gps /dev/rtk_um982; do
+  # Note: /tmp/virtual_twist_tx and rx are managed by the server.py daemon; do not fuser-kill them.
+  for dev in /dev/wheeltec_gps /dev/rtk_um982; do
     if [ -e "$dev" ] && fuser "$dev" >/dev/null 2>&1; then
       fuser -k "$dev" 2>/dev/null || true
     fi
@@ -64,8 +65,8 @@ cat > "$SESSION_DIR/system/session_info.yaml" <<EOF
 mode: $MODE
 start_time: $(date -Iseconds)
 session_dir: $SESSION_DIR
-git_branch: $(cd ~/XJTLU-autonomous-vehicle && git branch --show-current 2>/dev/null || echo unknown)
-git_commit: $(cd ~/XJTLU-autonomous-vehicle && git rev-parse --short HEAD 2>/dev/null || echo unknown)
+git_branch: $(cd ~/frogbot2026 && git branch --show-current 2>/dev/null || echo unknown)
+git_commit: $(cd ~/frogbot2026 && git rev-parse --short HEAD 2>/dev/null || echo unknown)
 frc_mode: ${FRC_MODE:-off}
 ros_log_dir: $SESSION_DIR/console
 data_log_dir: $SESSION_DIR/data
@@ -82,7 +83,7 @@ cleanup_runtime_nodes
 
 set +u
 source /opt/ros/humble/setup.bash
-source ~/XJTLU-autonomous-vehicle/install/setup.bash
+source ~/frogbot2026/install/setup.bash
 set -u
 
 case "$MODE" in
@@ -131,7 +132,7 @@ if [[ "$MODE" == "travel" && -n "${FYP_USE_FOXGLOVE:-}" ]]; then
 fi
 
 if [[ "$MODE" == "corridor" && "${FYP_CORRIDOR_CONSOLE_MODE:-quiet}" != "raw" ]]; then
-  ROUTE_FILE="$HOME/XJTLU-autonomous-vehicle/runtime-data/gnss/current_route.yaml"
+  ROUTE_FILE="$HOME/frogbot2026/runtime-data/gnss/current_route.yaml"
   ROUTE_FIX_TIMEOUT_S=""
   if [[ -f "$ROUTE_FILE" ]]; then
     ROUTE_FIX_TIMEOUT_S="$(
@@ -168,7 +169,7 @@ if [[ "$MODE" == "corridor" && "${FYP_CORRIDOR_CONSOLE_MODE:-quiet}" != "raw" ]]
   LAUNCH_PID=$!
 
   set +e
-  python3 ~/XJTLU-autonomous-vehicle/scripts/monitor_corridor_status.py \
+  python3 ~/frogbot2026/scripts/monitor_corridor_status.py \
     --startup-timeout-s "$STARTUP_TIMEOUT_S" \
     --launch-log "$LAUNCH_STDOUT_LOG" \
     --launch-pid "$LAUNCH_PID"

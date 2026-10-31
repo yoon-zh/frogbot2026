@@ -310,8 +310,8 @@
 
 /serial_twistctl_node:
   ros__parameters:
-    # 下位机控制串口设备；改错会导致速度指令发不出去。
-    port: /dev/serial_twistctl
+    # 下位机控制串口设备（通过 server.py PTY 代理转接真实串口 /dev/serial_twistctl）。
+    port: /tmp/virtual_twist_tx
     # 控制串口波特率；必须和下位机固件一致。
     baudrate: 115200
     # 单次发送重试次数；调大更稳但控制延迟会增加。
@@ -328,8 +328,8 @@
 
 /serial_reader_node:
   ros__parameters:
-    # 底盘回读串口设备；通常与控制串口一致。
-    port: /dev/serial_twistctl
+    # 底盘回读串口设备（通过 server.py PTY 代理转接真实串口 /dev/serial_twistctl）。
+    port: /tmp/virtual_twist_rx
     # 回读串口波特率；必须和底盘一致。
     baud: 115200
 
@@ -466,7 +466,7 @@
     # 特征检索最低分数；调大更保守，调小更容易注入。
     feature_min_score: 0.15
     # 特征锚原型文件；路径不同时用 FRC_EXTRA_PARAMS 覆盖。
-    prototypes_path: /home/jetson/XJTLU-autonomous-vehicle/runtime-data/frc/models/prototypes.npz
+    prototypes_path: /home/badger/frogbot2026/runtime-data/frc/models/prototypes.npz
     # TensorRT engine 路径；空值表示禁用 v2 模型，仅跑地图锚/特征锚。
     model_engine_path: ""
 
@@ -475,7 +475,7 @@
     # 当前 scene ID；跨 session 重挂只在同 scene 内生效。
     scene_id: S0
     # SQLite 锚库路径；路径不同时用 FRC_EXTRA_PARAMS 覆盖。
-    anchor_db_path: /home/jetson/XJTLU-autonomous-vehicle/runtime-data/frc/anchors.db
+    anchor_db_path: /home/badger/frogbot2026/runtime-data/frc/anchors.db
     # 平稳通过后的 P_usable 衰减系数；调小更快退役旧锚。
     beta: 0.8
     # P_usable 低于该值进入 stale；stale 仍注入但权重减半。
