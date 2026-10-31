@@ -54,6 +54,7 @@ make launch-explore-gps  # Explore mode with GNSS bringup and PGO GPS factor
 make launch-nav-gps      # Scene-bundle + route-graph GPS goal navigation workflow
 make launch-rtk-basic    # RTK signal testing with CORS account
 make launch-tightly-coupled # Tightly-coupled system using FGO, currently in validation
+make launch-survey       # Autonomous exploration for indoor mapping and database relocalization
 ```
 
 All `make launch-*` targets go through `scripts/launch_with_logs.sh`, which creates a per-session directory under `runtime-data/logs/`.

@@ -38,6 +38,18 @@ source ~/.bashrc
 
 ## 1. 构建与 Source
 
+如果之前未安装前置开发工具（`vcs`、`rosdep`、`pip`）：
+
+```bash
+sudo apt-get update
+sudo apt-get install -y python3-vcstool python3-rosdep python3-pip
+sudo rosdep init || true
+rosdep update
+pip install websockets
+```
+
+初始设置与构建：
+
 ```bash
 # 首次依赖初始化
 make setup
@@ -46,10 +58,15 @@ make setup
 make build
 
 # 分层构建
+make build-bringup
+make build-fastlio2
 make build-sensor
 make build-perception
 make build-planning
 make build-navigation
+
+# 固件构建（STM32）
+make build-firmware
 
 # 单包构建
 colcon build --packages-select <pkg> --symlink-install --parallel-workers 1
@@ -78,6 +95,7 @@ make launch-explore-gps
 make launch-nav-gps
 make launch-rtk-basic
 make launch-tightly-coupled
+make launch-survey
 ```
 
 等效的 wrapper 直调方式：
@@ -92,6 +110,7 @@ bash scripts/launch_with_logs.sh explore-gps
 bash scripts/launch_with_logs.sh nav-gps
 bash scripts/launch_with_logs.sh rtk-basic
 bash scripts/launch_with_logs.sh tightly-coupled
+bash scripts/launch_with_logs.sh survey
 ```
 
 等效的 `ros2 launch` 方式：
@@ -104,6 +123,7 @@ ros2 launch bringup system_tightly_coupled.launch.py
 ros2 launch bringup system_explore_gps.launch.py
 ros2 launch bringup system_nav_gps.launch.py
 ros2 launch bringup system_travel.launch.py
+ros2 launch bringup system_survey.launch.py
 ```
 
 SLAM 纯建图可选 RTK 记录：
@@ -223,6 +243,32 @@ FYP_USE_RVIZ=true bash scripts/launch_with_logs.sh corridor
 说明：
 - `corridor` 的运行细节、路线采集和 startup watchdog 见第 14 节
 - wrapper 会同时维护 session 日志和前台状态监控输出
+
+自主勘测建图的一整行命令：
+
+```bash
+bash scripts/launch_with_logs.sh survey
+```
+
+说明：
+- 勘测模式（Survey mode）会自动探索距离初始里程计原点 `(0,0,0)` 受限半径（`max_radius`）内的未知区域。
+- 它会请求地图匹配服务，将当前活跃的 SLAM 地图与已保存的地图数据库进行比对。
+- 在节点日志中可以看到 4 种逻辑状态：
+  - `Autonomous_Exploration`（自主探索）：向边界前沿（frontiers）下发导航命令。拒绝 `max_radius` 范围外的目标点。
+  - `Hypothesis_Testing`（假说检验）：暂停前沿探索，在已知坐标处确认定位匹配。
+  - `Pure_Mapping`（纯建图）：若当前地图面积超过 `threshold_x` 且仍未匹配成功时触发。禁用地图匹配，建图覆盖 `max_radius` 内的所有区域。
+  - `Return_To_Home`（返航）：确认匹配或完全建图完成后，安全导航返回 `(0,0,0)`。
+
+预期日志：
+- 运行时可直接通过以下命令查看 Survey 节点日志：
+  ```bash
+  ros2 topic echo /rosout | grep survey_node
+  ```
+  或者查看保存在会话目录中的日志文件：
+  ```bash
+  cat ~/XJTLU-autonomous-vehicle/runtime-data/logs/latest/console/survey_node.log
+  ```
+- 在终端输出中观察状态转换日志。输出信息包括 `Survey node initialized in state: ...`、`Match score ... >= guess threshold. Transitioning to Hypothesis_Testing`、`Goal rejected: exceeds MAX_RADIUS` 以及 `Fully mapped within radius. Transitioning to Return_To_Home`。
 
 ## 4. 单独启动核心组件
 
@@ -626,10 +672,10 @@ bash scripts/launch_with_logs.sh corridor
 
 带 RTK/CORS 参数的一行启动（现场测试用）：
 
-> 不要把真实 CORS 密码写进仓库；所有 CORS 账号信息用 `make ntrip-login` 管理。
+> 不要把真实 CORS 密码写进仓库。在 Jetson 中使用 `make ntrip-login` 管理 CORS 凭据。
 
 ```bash
-FYP_RTK_PARAMS_FILE=/tmp/um982_cors.yaml NTRIP_PASSWORD='<CORS_PASSWORD>' FYP_USE_RVIZ=false FYP_CORRIDOR_CONSOLE_MODE=quiet bash scripts/launch_with_logs.sh corridor
+FYP_USE_RVIZ=false FYP_CORRIDOR_CONSOLE_MODE=quiet bash scripts/launch_with_logs.sh corridor
 ```
 
 启动前确认当前要跑的路线：
@@ -947,3 +993,70 @@ rc
 7. 如需进行测试，请打开一个新终端或运行：`s1`
 
 每当您想要更新 `~/.bashrc` 时，请先在 [/scripts/.bashrc](/scripts/.bashrc) 中进行修改，然后按照上述步骤操作，以确保我们能够追踪该文件的变化。请勿在未在本仓库中进行追踪的情况下直接在 Jetson 中修改它。
+
+## FrogBoard: Mobile App Controlling（手机端控制） <a id="frogboard-mobile-app-controlling"></a>
+
+### 初始设置
+
+1. 安装 `websockets`（若未安装 `pip` 则一并安装）
+
+```bash
+sudo apt-get install -y python3-pip
+pip install websockets
+```
+
+2. 配置服务器开机自启服务
+
+```bash
+sudo cp ~/frogbot2026/scripts/frogboard_server/frogboard.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable frogboard.service
+sudo systemctl start frogboard.service
+```
+
+### 使用方法
+
+在您的手机或电脑上：
+
+1. 连接到机器人的 Wi-Fi
+2. 打开浏览器，访问 [frogboard.yoonzh.com](https://frogboard.yoonzh.com/)
+3. 输入地址：`robotfrogboard.yoonzh.com` 以及端口 `9090`，然后保存
+4. 查看日志以确认连接状态
+
+### 如何断开连接
+
+有三种断开连接的方式：
+- 直接关闭浏览器标签页
+- 切换 Wi-Fi 连接
+- 通过 SSH 运行：
+
+```bash
+make kill-phones
+```
+
+注意：这会强制断开所有通过 FrogBoard 连接到机器人的设备。服务器将在 3 秒后自动重启。
+
+## WebRTC 相机图传 (RealSense D455f)
+
+### 初始设置
+
+```bash
+wget https://github.com/AlexxIT/go2rtc/releases/latest/download/go2rtc_linux_arm64 -O go2rtc
+chmod +x go2rtc
+sudo mv go2rtc /usr/local/bin/
+```
+
+### 设置自启（后台守护进程）
+
+```bash
+sudo cp ~/frogbot2026/scripts/camera_stream/camera_stream.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable camera_stream.service
+sudo systemctl start camera_stream.service
+```
+
+### 图传访问测试
+
+- 视频流链接：`https://robotfrogboard.yoonzh.com:1985/stream.html?src=robot_cam&mode=webrtc`
+- 控制面板 Dashboard：`http://robotfrogboard.yoonzh.com:1985`
+
