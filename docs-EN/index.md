@@ -12,6 +12,8 @@
 | Contributing guide (EN) | [`../CONTRIBUTING-EN.md`](../CONTRIBUTING-EN.md) |
 | Known issues and current blockers | [known_issues.md](known_issues.md) |
 | Hardware specifications | [hardware_spec.md](hardware_spec.md) |
+| FrogBoard mobile teleoperation & commands | [commands.md#frogboard-mobile-app-controlling](commands.md#frogboard-mobile-app-controlling) |
+| WebRTC camera stream setup (go2rtc) | [`../scripts/camera_stream/README.md`](../scripts/camera_stream/README.md) |
 
 ## Technical Deep-Dive Documentation
 
@@ -26,12 +28,23 @@
 ## Development Log
 
 - Found in `devlog/YYYY-MM.md`
+- Latest updates: [October 2026 Devlog (Frogboard Teleoperation & WebRTC Streaming)](devlog/2026-10.md)
 
-## Firmware Snapshot
+## Remote Teleoperation & Video Streaming
 
-- The full STM32 RM C Board lower-controller directory is now checked into this repository: [`../src/firmware/rm_c_board/`](../src/firmware/rm_c_board/)
-- This path is intentionally preserved as a repository-local snapshot, including the saved source tree, project files, and the companion build artifacts already stored with it
-- Firmware-local readme: [`../src/firmware/rm_c_board/README.md`](../src/firmware/rm_c_board/README.md)
+- **FrogBoard Server**: Headless WebSocket teleoperation server running over TLS/WSS with non-blocking PTY serial multiplexing ([`../scripts/frogboard_server/server.py`](../scripts/frogboard_server/server.py)).
+- **Protocol & Safety Contract**: Downlink command formatting (`vcx`, `wc`, `en`), edge-triggered active braking, arming windows, and uplink telemetry synchronization ([`../scripts/frogboard_server/protocol.py`](../scripts/frogboard_server/protocol.py)).
+- **WebRTC Camera Stream**: Ultra low-latency RGB video streaming for the Intel RealSense D455f via go2rtc ([`../scripts/camera_stream/README.md`](../scripts/camera_stream/README.md), [`../scripts/camera_stream/go2rtc.yaml`](../scripts/camera_stream/go2rtc.yaml)).
+- **Service Daemons**: Background systemd units for autorun on boot ([`../scripts/frogboard_server/frogboard.service`](../scripts/frogboard_server/frogboard.service), [`../scripts/camera_stream/camera_stream.service`](../scripts/camera_stream/camera_stream.service)).
+
+## Firmware Submodule
+
+- The STM32 RM C Board lower-controller code is maintained as a git submodule: [`../src/firmware/frogbot-stm32/`](../src/firmware/frogbot-stm32/)
+- Upstream repository: [`https://github.com/yoon-zh/frogbot-stm32`](https://github.com/yoon-zh/frogbot-stm32)
+- To initialize and update the submodule:
+  ```bash
+  git submodule update --init --recursive
+  ```
 
 ## Archive Notes
 
