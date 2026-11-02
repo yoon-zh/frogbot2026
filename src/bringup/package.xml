@@ -40,6 +40,7 @@
   <exec_depend>nav2_mppi_controller</exec_depend>
   <exec_depend>nav2_rotation_shim_controller</exec_depend>
   <exec_depend>foxglove_bridge</exec_depend>
+  <exec_depend>realsense_camera</exec_depend>
   <exec_depend>waypoint_collector</exec_depend>
   <exec_depend>gps_waypoint_dispatcher</exec_depend>
   <exec_depend>indoor_navigation_manager</exec_depend>

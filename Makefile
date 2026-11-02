@@ -19,7 +19,7 @@ KILL_PATTERN := '[l]aunch_with_logs.sh|[r]os2 launch|[m]onitor_corridor_status(\
 # ==============================================================================
 # Auto-complete Helpers (Empty targets to trick bash/zsh tab-completion)
 # ==============================================================================
-launch-slam launch-explore launch-indoor-nav launch-corridor launch-explore-gps launch-nav-gps launch-rtk-basic launch-tightly-coupled launch-travel launch-survey:
+launch-slam launch-explore launch-indoor-nav launch-corridor launch-explore-gps launch-nav-gps launch-rtk-basic launch-slam-glass launch-tightly-coupled launch-travel launch-survey:
 
 ntrip-logout ntrip-status ntrip-setup:
 
@@ -62,6 +62,9 @@ build-fastlio2:
 
 build-rtk-basic:
 	$(COLCON_BUILD) --packages-select serial nmea_msgs um982_rtk_driver
+
+build-glass:
+	$(COLCON_BUILD) --packages-select realsense_camera bringup
 
 build-sensor:
 	$(COLCON_BUILD) --packages-select \

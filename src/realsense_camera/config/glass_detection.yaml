@@ -1,0 +1,34 @@
+glass_detection_node:
+  ros__parameters:
+    model_path: "yolov8s-world.pt"
+    classes:
+      - "glass door"
+      - "glass wall"
+      - "glass window"
+      - "transparent door"
+      - "door frame"
+      - "sliding glass door"
+    conf_threshold: 0.25
+    camera_height: 0.30       # meters from ground to camera optical center
+    camera_pitch_deg: 0.0     # tilt angle down in degrees (0 = horizontal forward)
+    depth_method: "hybrid"    # hybrid | ground_plane | frame_depth
+    wall_height: 1.5          # height of synthetic obstacle wall in meters
+    point_spacing: 0.05       # horizontal resolution of wall points in meters
+    vertical_spacing: 0.05    # vertical resolution of wall points in meters
+    frame_strip_px: 10        # bottom pixel strip height to sample solid frame depth
+    min_depth: 0.2            # minimum valid obstacle distance in meters
+    max_depth: 8.0            # maximum valid obstacle distance in meters
+    target_frame: "base_link" # output frame for synthetic point cloud
+
+    color_topic: "/camera/camera/color/image_raw"
+    depth_topic: "/camera/camera/aligned_depth_to_color/image_raw"
+    camera_info_topic: "/camera/camera/color/camera_info"
+    obstacle_cloud_topic: "/camera/glass_obstacles"
+    annotated_image_topic: "/camera/glass_detection/image_annotated"
+    markers_topic: "/camera/glass_detection/markers"
+
+    publish_annotated_image: true
+    publish_markers: true
+    sync_queue_size: 10
+    sync_slop_sec: 0.08
+
