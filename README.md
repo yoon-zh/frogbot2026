@@ -1,17 +1,33 @@
 # Frogbot: Autonomous Vehicle
 
-ROS 2 Humble monorepo for the XJTLU autonomous vehicle platform. The repository contains the Jetson runtime workspace, sensor drivers, SLAM/localization, Nav2 navigation, GNSS tooling, engineering documentation, remote teleoperation services (WebSocket & WebRTC), and the STM32 lower-controller firmware submodule used by the current vehicle.
+ROS 2 Humble repository for the XJTLU autonomous vehicle platform.
+
+![assets/2026-11-04.Frogbot Navigation.gif](assets/2026-11-04.FrogbotNavigation.gif)
+
+- Indoor & outdoor navigation
+  - Indoor stack: FAST-LIO2 + PGO + Nav2 MPPI
+  - Outdoor uses RTK GNSS signal
+- [Remote Teleoperation: Frogboard](#remote-teleoperation--video-streaming-frogboard)
+- [STM32 lower-controller firmware](https://github.com/yoon-zh/frogbot-stm32)
+
 
 ## Current State
 
-- Main deployment target: Jetson Orin NX running Ubuntu 22.04 and ROS 2 Humble.
-- Remote headless teleoperation: FrogBoard mobile web application over secure WebSockets (`scripts/frogboard_server/server.py`) and ultra-low latency WebRTC video streaming from the RealSense D455f (`scripts/camera_stream/go2rtc.yaml`).
-- Current verified indoor stack: FAST-LIO2 + PGO + Nav2 MPPI, launched through `make launch-indoor-nav`.
-- Current outdoor GNSS path: GPS Corridor, launched through `make launch-corridor`.
-- GPS corridor software can enter route execution, but ordinary GNSS `/fix` physical-coordinate accuracy remains the main outdoor blocker.
-- Runtime parameters are centralized in `src/bringup/config/master_params.yaml`.
-- Runtime data and logs live under `~/frogbot2026/runtime-data` (legacy paths under `~/XJTLU-autonomous-vehicle/runtime-data` are aliased for compatibility).
+> [!IMPORTANT]
+> The current robot setup does not detect glass obstacles such as window walls. This is currently being fixed.
+
+> [!NOTE]
+> This project is in active development. The main branch contains the most recent working state of the robot.
+
+- The robot uses a Jetson Orin NX running Ubuntu 22.04, STM32 lower controller, and ROS 2 Humble
+- Currently working on autonomous indoor exploration: Survey mode
+- Verified indoor navigation stack: FAST-LIO2 + PGO + Nav2 MPPI, launched through `make launch-indoor-nav`.
+- Verified outdoor GNSS (RTK) path: GPS Corridor, launched through `make launch-corridor`.
+- Remote headless teleoperation: FrogBoard mobile web application over WebSockets and WebRTC video streaming from the RealSense camera.
 - Session logs are created by `scripts/launch_with_logs.sh`.
+
+![assets/2026-11-04.FrogbotTimelapse.gif](assets/2026-11-04.FrogbotTimelapse.gif)
+
 
 ## Hardware And Software Stack
 
@@ -21,11 +37,11 @@ ROS 2 Humble monorepo for the XJTLU autonomous vehicle platform. The repository 
 | LiDAR / IMU | Livox MID360 and WIT/BMI088-related IMU support |
 | Camera / Video Stream | Intel RealSense D455f RGB stream via go2rtc (WebRTC H.264 @ 640x480 30fps) |
 | GNSS | T-RTK UM982 Dual Antenna Mobile Kit |
-| Lower controller | STM32 RM C Board via Git submodule (`src/firmware/frogbot-stm32`) over serial / PTY proxy bridge |
-| Remote Teleoperation | FrogBoard mobile web app over secure WebSocket (WSS) + PTY command arbitration |
-| Localization | FAST-LIO2 front end + PGO back end |
-| Navigation | Nav2 MPPI with project-specific bringup and behavior trees |
-| Runtime data | `runtime-data/` inside the workspace (`~/frogbot2026/runtime-data`) |
+| Lower controller | STM32 RM C Board via [Git submodule](https://github.com/yoon-zh/frogbot-stm32) over serial / PTY proxy bridge |
+| Remote Teleoperation | FrogBoard mobile web app over secure WebSocket + PTY command arbitration |
+| Localization | FAST-LIO2 + PGO |
+| Navigation | Nav2 MPPI with mode-specific bringup and behavior trees |
+| Runtime data | `runtime-data/` inside the workspace, not pushed to Git |
 
 ## Quick Start
 
@@ -34,11 +50,12 @@ Run these commands on the Jetson workspace:
 ```bash
 make setup
 make build
-ss
+source /opt/ros/humble/setup.bash
+source install/setup.bash
 bash scripts/init_runtime_data.sh
 ```
 
-`make setup` automatically imports third-party dependencies (`dependencies.repos`), initializes git submodules (`src/firmware/frogbot-stm32`), resolves rosdep dependencies, and installs required Python packages (`websockets`, `geojson`, `geopy`, `matplotlib`).
+`make setup` automatically imports [third-party dependencies](dependencies.repos), initializes [Git submodules](https://github.com/yoon-zh/frogbot-stm32), resolves rosdep dependencies, and installs required Python packages: `websockets`, `geojson`, `geopy`, `matplotlib`.
 
 Colcon build commands must keep `--parallel-workers 1` on Jetson because of memory limits. The `Makefile` already follows that rule.
 
@@ -57,7 +74,7 @@ make launch-tightly-coupled # Tightly-coupled system using FGO, currently in val
 make launch-survey       # Autonomous exploration for indoor mapping and database relocalization
 ```
 
-All `make launch-*` targets go through `scripts/launch_with_logs.sh`, which creates a per-session directory under `runtime-data/logs/`.
+All `make launch-*` targets go through [scripts/launch_with_logs.sh](scripts/launch_with_logs.sh), which creates a per-session directory under `runtime-data/logs/`.
 
 Stop runtime processes with:
 
@@ -65,7 +82,7 @@ Stop runtime processes with:
 make kill
 ```
 
-Force-disconnect all connected FrogBoard mobile devices with:
+Force-disconnect all FrogBoard mobile devices with:
 
 ```bash
 make kill-phones
@@ -91,8 +108,8 @@ src/
   navigation/       Waypoint tools and GPS route dispatch
   firmware/         STM32 RM C Board lower-controller git submodule
 
-docs-CN/            Active Chinese engineering documentation
-docs-EN/            Active English engineering documentation
+docs-CN/            Active Chinese documentation
+docs-EN/            Active English documentation
 scripts/
   camera_stream/    go2rtc WebRTC camera configuration and systemd service
   frogboard_server/ FrogBoard WebSocket teleoperation server and serial PTY proxy
@@ -116,37 +133,31 @@ make build-firmware
 make test
 ```
 
-Running `make test` executes both ROS 2 colcon test suites and the Frogboard protocol unit tests
+Running `make test` executes both ROS 2 colcon test suites and the Frogboard protocol unit tests.
 
-After every build:
+Source after every build:
 
 ```bash
-ss
+source /opt/ros/humble/setup.bash
+source install/setup.bash
 ```
 
 Package-level builds follow this form:
 
 ```bash
 colcon build --packages-select <pkg> --symlink-install --parallel-workers 1
+source /opt/ros/humble/setup.bash
 source install/setup.bash
 ```
 
 ## Runtime Data
 
-The active runtime root is:
+In the robot, the active runtime root is: `runtime-data/`. Inside:
 
-```text
-~/frogbot2026/runtime-data
-```
-
-Important subdirectories:
-
-- `logs/` - launch session logs, rosbag output, console logs, and custom node logs.
-- `gnss/` - GNSS route files, startup repeatability data, and GNSS calibration artifacts.
-- `maps/` - map and route inputs used by mapping and GNSS planning tools.
-- `config/` - runtime logging switches and local operational state.
-
-Some code still uses legacy `FYP_*` environment variables as runtime interface names. They are retained for compatibility and should not be renamed without a separate compatibility migration.
+- `logs/` launch session logs, rosbag output, console logs, and custom node logs.
+- `gnss/` GNSS route files, startup repeatability data, and GNSS calibration artifacts.
+- `maps/` map and route inputs used by mapping and GNSS planning tools.
+- `config/` runtime logging switches and local operational state.
 
 ## Documentation
 
@@ -163,22 +174,9 @@ Some code still uses legacy `FYP_*` environment variables as runtime interface n
 
 The `docs-CN/` and `docs-EN/` trees are maintained as paired documentation. Update both whenever submitting changes.
 
-## Firmware Submodule
-
-The lower-controller firmware is maintained as a git submodule:
-
-```text
-src/firmware/frogbot-stm32/
-```
-
-Upstream repository: [`https://github.com/yoon-zh/frogbot-stm32`](https://github.com/yoon-zh/frogbot-stm32)
-
-All changes under `src/firmware/rm_c_board/*` were moved into this submodule to accommodate for the server protocol in [`scripts/frogboard_server/protocol.py`](scripts/frogboard_server/protocol.py). It is not a ROS 2 package and should not be treated as part of the colcon workspace build.
-
 ## Contribution And Safety Boundaries
 
-- Do not modify tuned YAML parameters without documenting why.
-- Do not modify imported upstream/vendor code casually.
-- Keep Jetson builds at `--parallel-workers 1`.
-- Keep runtime interfaces such as `FYP_LOG_SESSION_DIR`, `FYP_RUNTIME_ROOT`, and `FYP_USE_RVIZ` compatible unless a separate migration plan is approved.
-- Follow [`CONTRIBUTING.md`](CONTRIBUTING.md) before opening or merging changes.
+- Do not modify tuned YAML parameters without documenting why
+- Do not modify imported upstream/vendor code casually
+- Keep Jetson builds at `--parallel-workers 1`
+- Follow [`CONTRIBUTING.md`](CONTRIBUTING.md) before opening or merging changes
