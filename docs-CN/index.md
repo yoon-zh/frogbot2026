@@ -29,8 +29,11 @@
 
 ## 开发日志
 
-- 在 `devlog/YYYY-MM.md`
-- 最新记录：[2026年10月开发日志（Frogboard 遥控与 WebRTC 图传）](devlog/2026-10.md)
+在 `devlog/YYYY-MM.md`
+
+最新记录：
+- [2026年11月开发日志 (文件提升)](devlog/2026-11.md)
+- [2026年10月开发日志（Frogboard 遥控与 WebRTC 图传）](devlog/2026-10.md)
 
 
 ## 远程遥控与视频图传

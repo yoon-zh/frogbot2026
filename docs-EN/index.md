@@ -29,7 +29,9 @@
 
 Found in `devlog/YYYY-MM.md`.
 
-Latest updates: [October 2026 Devlog (Frogboard Teleoperation & WebRTC Streaming)](devlog/2026-10.md)
+Latest updates: 
+- [November 2026 Devlog (Beautify documentation)](devlog/2026-11.md)
+- [October 2026 Devlog (Frogboard Teleoperation & WebRTC Streaming)](devlog/2026-10.md)
 
 
 ## Remote Teleoperation & Video Streaming
