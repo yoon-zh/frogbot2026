@@ -1,21 +1,19 @@
 ---
 name: Bug Report
-about: 报告一个 bug
+about: Report a bug; 报告一个 bug
 labels: bug
 ---
 
-## 问题描述
+## Problem Description | 问题描述
 
-## 复现步骤
+## How to Reproduce | 复现步骤
 1.
 2.
 3.
 
-## 期望行为
+## When the bug was seen | 期望行为
 
-## 实际行为
-
-## 环境
-- 模式: SLAM / Explore / Explore GPS / Travel
-- 运行时长:
-- 相关 topic/node:
+## Environment | 环境
+- Launch Mode: SLAM / Explore / Explore GPS / Travel
+- Running time | 运行时长:
+- Related topic/node | 相关 topic/node:
