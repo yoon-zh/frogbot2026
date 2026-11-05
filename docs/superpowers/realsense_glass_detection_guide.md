@@ -98,7 +98,7 @@ For detected bottom endpoints $\mathbf{P}_L$ and $\mathbf{P}_R$ in the robot bas
 2. Vertical Extrusion: For each ground sample, extrude points vertically from ground level ($Z = 0.0\text{ m}$) up to wall height $H = 1.5\text{ m}$ at $\Delta z = 0.05\text{ m}$ intervals.
 3. Publish as standard `sensor_msgs/msg/PointCloud2`.
 
----
+
 
 ## 3. Hardware Setup on the Vehicle
 
@@ -117,7 +117,7 @@ lsusb -t
 ```
 Verify the RealSense device entry shows `Driver=uvcvideo, 5000M`. If it shows `480M`, the cable or port is operating in USB 2.0 fallback mode, which will limit or disable depth streaming.
 
----
+
 
 ## 4. Software Installation & Environment Setup
 
@@ -143,9 +143,10 @@ pip3 install ultralytics
 ```
 > [!NOTE]
 > JetPack 5.x / 6.x comes with PyTorch pre-installed with CUDA support. `pip install ultralytics` will leverage the Jetson GPU automatically. To verify GPU availability:
-> ```bash
-> python3 -c "import torch; print('CUDA Available:', torch.cuda.is_available(), '| Device:', torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'CPU')"
-> ```
+
+```bash
+python3 -c "import torch; print('CUDA Available:', torch.cuda.is_available(), '| Device:', torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'CPU')"
+```
 
 ### 4.3 Install RealSense Driver Options
 You have two options for streaming the camera feed:
@@ -169,7 +170,7 @@ python3 -c "from ultralytics import YOLO; model = YOLO('yolov8s-world.pt'); prin
 ```
 This stores `yolov8s-world.pt` in the local working directory / cache.
 
----
+
 
 ## 5. Building the Workspace
 
@@ -274,9 +275,9 @@ ros2 launch bringup system_slam_glass.launch.py \
 ```
 In this mode, a static TF publisher provides `map -> odom -> base_footprint -> base_link` transforms, allowing you to test glass detection and costmap generation statically indoors without moving the robot.
 
----
 
-## 7. Foxglove Studio Visualization Guide
+
+## 7. Foxglove
 
 Foxglove Studio connects directly to the Jetson over WebSocket without needing any ROS 2 installation on your client laptop (Windows, Mac, or Linux).
 
