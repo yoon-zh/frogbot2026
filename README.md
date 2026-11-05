@@ -2,7 +2,7 @@
 
 ROS 2 Humble repository for the XJTLU autonomous vehicle platform.
 
-![assets/2026-11-04.Frogbot Navigation.gif](assets/2026-11-04.FrogbotNavigation.gif)
+![assets/2026-11-04_Frogbot Navigation.gif](assets/2026-11-04_FrogbotNavigation.gif)
 
 - Indoor & outdoor navigation
   - Indoor stack: FAST-LIO2 + PGO + Nav2 MPPI
@@ -26,7 +26,7 @@ ROS 2 Humble repository for the XJTLU autonomous vehicle platform.
 - Remote headless teleoperation: FrogBoard mobile web application over WebSockets and WebRTC video streaming from the RealSense camera.
 - Session logs are created by `scripts/launch_with_logs.sh`.
 
-![assets/2026-11-04.FrogbotTimelapse.gif](assets/2026-11-04.FrogbotTimelapse.gif)
+![assets/2026-11-04_FrogbotTimelapse.gif](assets/2026-11-04_FrogbotTimelapse.gif)
 
 
 ## Hardware And Software Stack
