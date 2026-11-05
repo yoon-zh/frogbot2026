@@ -1,17 +1,17 @@
 ---
 name: Feature Request
-about: 提出一个新功能需求
+about: Propose a feature | 提出一个新功能需求
 labels: enhancement
 ---
 
-## 功能描述
+## Feature Description | 功能描述
 
-## 动机
+## Motivation | 动机
 
-## 影响的层级
-- [ ] 传感器层
-- [ ] 感知层
-- [ ] 规划层
-- [ ] 导航层
-- [ ] 文档/工作流
-- [ ] 系统/工具链
+## Affected Layers | 影响的层级
+- [ ] Sensor     | 传感器
+- [ ] Perception | 感知
+- [ ] Planning   | 规划
+- [ ] Navigation | 导航
+- [ ] Documentation | 文档
+- [ ] System, Toolchain | 系统,工具链

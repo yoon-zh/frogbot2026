@@ -6,16 +6,15 @@
 
 以下所有命令均基于以下条件：
 
-1. 机器人仓库已克隆到 `~/XJTLU-autonomous-vehicle` 文件夹中
+1. 机器人仓库已克隆到 `~/frogbot2026` 文件夹中
 2. 机器人已安装 ROS2 Humble
 3. `~/.bashrc` 与 [/scripts/.bashrc](/scripts/.bashrc) 中的版本完全一致
 
 要创建该目录，请运行：
 
 ```bash
-cd ~/
-mkdir XJTLU-autonomous-vehicle
-cd ~/XJTLU-autonomous-vehicle
+git clone git@github.com:yoon-zh/frogbot2026.git
+cd ~/frogbot2026
 ```
 
 要安装 ROS2 Humble，请参考其[官方文档](https://docs.ros.org/en/humble/Installation/Alternatives/Ubuntu-Development-Setup.html)。
@@ -70,17 +69,20 @@ make build-firmware
 
 # 单包构建
 colcon build --packages-select <pkg> --symlink-install --parallel-workers 1
+```
 
-# 每次构建后必须重新 source
-ss
+> [!IMPORTANT]
+> 每次构建后必须重新 source:
+
+```bash
+source /opt/ros/humble/setup.bash
+source install/setup.bash
 ```
 
 ## 2. 初始化运行时数据
 
 ```bash
 bash scripts/init_runtime_data.sh
-
-ls ~/XJTLU-autonomous-vehicle/runtime-data
 ```
 
 ## 3. 启动运行模式
@@ -158,7 +160,7 @@ FYP_USE_RVIZ=true bash scripts/launch_with_logs.sh indoor-nav
 
 ```bash
 FYP_USE_RVIZ=true bash scripts/launch_with_logs.sh travel \
-  map_bundle:=/home/badger/XJTLU-autonomous-vehicle/runtime-data/maps/indoor/<map_id>
+  map_bundle:=/home/badger/frogbot2026/runtime-data/maps/indoor/<map_id>
 ```
 
 Travel 默认把每个启动会话的导航诊断 rosbag 写到
@@ -169,11 +171,11 @@ FAST-LIO2/底盘里程计、全局/局部路径、代价地图、激光扫描和
 ```bash
 FYP_TRAVEL_BAG_PROFILE=debug FYP_USE_RVIZ=false FYP_USE_FOXGLOVE=true \
   bash scripts/launch_with_logs.sh travel \
-  map_bundle:=/home/badger/XJTLU-autonomous-vehicle/runtime-data/maps/indoor/floor_4
+  map_bundle:=/home/badger/frogbot2026/runtime-data/maps/indoor/floor_4
 
 # 仅在明确不需要复盘时关闭自动录包
 FYP_TRAVEL_RECORD_BAG=false bash scripts/launch_with_logs.sh travel \
-  map_bundle:=/home/badger/XJTLU-autonomous-vehicle/runtime-data/maps/indoor/floor_4
+  map_bundle:=/home/badger/frogbot2026/runtime-data/maps/indoor/floor_4
 ```
 
 说明：
@@ -211,7 +213,7 @@ localizer 和 AMCL；这是因为初始定位前尚不存在可用于转换的 `
 
 ```bash
 ros2 service call /localizer/relocalize interface/srv/Relocalize \
-  "{pcd_path: '/home/badger/XJTLU-autonomous-vehicle/runtime-data/maps/indoor/<map_id>/localization/map_localization.pcd', x: 0.0, y: 0.0, z: 0.0, yaw: 0.0, pitch: 0.0, roll: 0.0}"
+  "{pcd_path: '/home/badger/frogbot2026/runtime-data/maps/indoor/<map_id>/localization/map_localization.pcd', x: 0.0, y: 0.0, z: 0.0, yaw: 0.0, pitch: 0.0, roll: 0.0}"
 ```
 
 不依赖 RViz 的地点名导航：
@@ -266,7 +268,7 @@ bash scripts/launch_with_logs.sh survey
   ```
   或者查看保存在会话目录中的日志文件：
   ```bash
-  cat ~/XJTLU-autonomous-vehicle/runtime-data/logs/latest/console/survey_node.log
+  cat ~/frogbot2026/runtime-data/logs/latest/console/survey_node.log
   ```
 - 在终端输出中观察状态转换日志。输出信息包括 `Survey node initialized in state: ...`、`Match score ... >= guess threshold. Transitioning to Hypothesis_Testing`、`Goal rejected: exceeds MAX_RADIUS` 以及 `Fully mapped within radius. Transitioning to Return_To_Home`。
 
@@ -287,13 +289,13 @@ ros2 launch gnss_calibration gnss_calibration_launch.py
 
 # GNSS scene-ready localizer（新 GPS 路网架构）
 ros2 run gnss_calibration gps_anchor_localizer_node \
-  --ros-args --params-file ~/XJTLU-autonomous-vehicle/runtime-data/gnss/current_scene/master_params_scene.yaml
+  --ros-args --params-file ~/frogbot2026/runtime-data/gnss/current_scene/master_params_scene.yaml
 
 # FAST-LIO2
-ros2 launch fastlio2 lio_no_rviz.py params_file:=~/XJTLU-autonomous-vehicle/src/bringup/config/master_params.yaml
+ros2 launch fastlio2 lio_no_rviz.py params_file:=~/frogbot2026/src/bringup/config/master_params.yaml
 
 # PGO + FAST-LIO2
-ros2 launch pgo pgo_launch.py params_file:=~/XJTLU-autonomous-vehicle/src/bringup/config/master_params.yaml
+ros2 launch pgo pgo_launch.py params_file:=~/frogbot2026/src/bringup/config/master_params.yaml
 
 # 兼容旧平铺 PGO 配置
 ros2 launch pgo pgo_launch.py pgo_config:=pgo_no_gps.yaml
@@ -310,6 +312,7 @@ ros2 run gps_waypoint_dispatcher goto_name <destination_name>
 ros2 run gps_waypoint_dispatcher list_destinations
 ros2 run gps_waypoint_dispatcher stop
 ```
+
 
 ## 5. 调试与状态检查
 
@@ -358,39 +361,42 @@ ros2 run tf2_tools tf2_echo map base_link
 - `/compute_route` / `/follow_path` / `/navigate_to_pose` action 是否在线
 - RViz fixed frame 是否为 `map`
 
+
 ## 6. 日志与运行时数据
 
 ```bash
 # 查看当前 latest 指向
-readlink -f ~/XJTLU-autonomous-vehicle/runtime-data/logs/latest
+readlink -f ~/frogbot2026/runtime-data/logs/latest
 
 # 查看当前 session 元信息
-cat ~/XJTLU-autonomous-vehicle/runtime-data/logs/latest/system/session_info.yaml
+cat ~/frogbot2026/runtime-data/logs/latest/system/session_info.yaml
 
 # 查看 tegrastats
-tail -f ~/XJTLU-autonomous-vehicle/runtime-data/logs/latest/system/tegrastats.log
+tail -f ~/frogbot2026/runtime-data/logs/latest/system/tegrastats.log
 
 # 查看 console 日志目录
-ls ~/XJTLU-autonomous-vehicle/runtime-data/logs/latest/console
+ls ~/frogbot2026/runtime-data/logs/latest/console
 
 # 查看 data 日志目录
-ls ~/XJTLU-autonomous-vehicle/runtime-data/logs/latest/data
+ls ~/frogbot2026/runtime-data/logs/latest/data
 ```
+
 
 ## 7. 数据采集与评测
 
 ```bash
 # 录制 rosbag
 bash scripts/data_collection/record_bag.sh
-bash scripts/data_collection/record_bag.sh ~/XJTLU-autonomous-vehicle/runtime-data/bags/my_run
+bash scripts/data_collection/record_bag.sh ~/frogbot2026/runtime-data/bags/my_run
 
 # 单独录 tegrastats
 bash scripts/data_collection/record_perf.sh
-bash scripts/data_collection/record_perf.sh ~/XJTLU-autonomous-vehicle/runtime-data/perf/my_run.log
+bash scripts/data_collection/record_perf.sh ~/frogbot2026/runtime-data/perf/my_run.log
 
 # 导出 TUM 轨迹
-python3 scripts/data_collection/bag_to_tum.py   ~/XJTLU-autonomous-vehicle/runtime-data/bags/my_run/rosbag2   /pgo/optimized_odom   ~/XJTLU-autonomous-vehicle/runtime-data/bags/my_run/pgo_optimized.tum
+python3 scripts/data_collection/bag_to_tum.py   ~/frogbot2026/runtime-data/bags/my_run/rosbag2   /pgo/optimized_odom   ~/frogbot2026/runtime-data/bags/my_run/pgo_optimized.tum
 ```
+
 
 ## 8. 地图保存
 
@@ -438,14 +444,15 @@ ros2 run tf2_tools view_frames
 ros2 run tf2_ros tf2_echo odom base_footprint
 
 # 保存 3D 点云地图；file_path 必须写绝对路径，ROS service 请求里不会展开 ~
-ros2 service call /pgo/save_maps interface/srv/SaveMaps "{file_path: '/home/badger/XJTLU-autonomous-vehicle/runtime-data/maps/indoor/<map_name>/localization', save_patches: true}"
+ros2 service call /pgo/save_maps interface/srv/SaveMaps "{file_path: '/home/badger/frogbot2026/runtime-data/maps/indoor/<map_name>/localization', save_patches: true}"
 
 # 保存 2D 栅格地图
-ros2 run nav2_map_server map_saver_cli -f ~/XJTLU-autonomous-vehicle/runtime-data/maps/indoor/<map_name>/navigation/map --ros-args -p map_subscribe_transient_local:=true
+ros2 run nav2_map_server map_saver_cli -f ~/frogbot2026/runtime-data/maps/indoor/<map_name>/navigation/map --ros-args -p map_subscribe_transient_local:=true
 
 # 查看 PCD
 pcl_viewer -bc 1,1,1 -ps 3 <map.pcd>
 ```
+
 
 ## 9. 停止系统与紧急停车
 
@@ -460,6 +467,7 @@ make kill
 2. 车身红色物理急停按钮，覆盖所有软件命令
 
 PS2 `B` 键的下位机逻辑为阻尼主动刹车：保持电机参与控制，按轮速反向给电流，高速段保留较高刹车上限以缩短距离，低速段逐步降低电流并限制电流变化率，接近停止后清状态并持续发送零电流帧。B 刹车只在首次触发时初始化锁存状态，持续按住 B 不会反复清空电流爬坡；B 急停指示为粉色常亮，不再执行阻塞式闪烁。台架和车测确认前，不要用 `B` 替代 `X` 或车身红色物理急停。
+
 
 ## 10. Git 与 PR
 
@@ -495,6 +503,7 @@ git checkout main
 git pull --ff-only
 git fetch --prune
 ```
+
 
 ## 11. 系统维护
 
@@ -544,12 +553,13 @@ python3 -c "import pyproj; print(pyproj.__version__)"
 - 脚本在 Jetson 本机执行时会自动切到本地模式；如果当前 shell 是 SSH/Tailscale，会话可能在切网过程中断开
 - 每次切网都会在 Jetson 侧重启 `todeskd`，日志写入 `/tmp/wifi-switch.log`
 
+
 ## 12. GPS 数据采集
 
 最短两行启动命令：
 
 ```bash
-ros2 launch nmea_navsat_driver nmea_serial_driver.launch.py params_file:=/home/jetson/XJTLU-autonomous-vehicle/src/bringup/config/master_params.yaml
+ros2 launch nmea_navsat_driver nmea_serial_driver.launch.py params_file:=/home/jetson/frogbot2026/src/bringup/config/master_params.yaml
 python3 scripts/collect_gps_scene.py
 ```
 
@@ -561,7 +571,7 @@ python3 scripts/collect_gps_scene.py
 - 坐标源: **仅使用 /fix**
 - 采样: 每点 10 个样本取平均
 - 质量门槛: 样本散布 < 2m，否则拒绝采集
-- 输出文件: `~/XJTLU-autonomous-vehicle/runtime-data/gnss/scene_gps_bundle.yaml`
+- 输出文件: `~/frogbot2026/runtime-data/gnss/scene_gps_bundle.yaml`
 - 单文件同时维护：
   - fixed origin
   - graph nodes
@@ -591,7 +601,7 @@ python3 scripts/compile_qgis_scene.py \
   --input /Users/badger/Desktop/maps/qgis_4_package/3.geojson \
   --scene-name qgis_4 \
   --densify-step-m 5.0 \
-  --output ~/XJTLU-autonomous-vehicle/runtime-data/gnss/scene_gps_bundle.yaml
+  --output ~/frogbot2026/runtime-data/gnss/scene_gps_bundle.yaml
 
 python3 scripts/build_scene_runtime.py
 ```
@@ -603,6 +613,7 @@ python3 scripts/build_scene_runtime.py
 - 允许系统上电启动的区域附近必须布 `anchor`
 - graph edge 按节点间直线段理解，弯道必须靠增加节点离散化
 - 脚本会提示是否与上一个点自动建边
+
 
 ## 13. GPS 导航调试
 
@@ -645,6 +656,7 @@ python3 scripts/nav_gps_menu.py
 - 默认 lean bag 记录 RTK、FAST-LIO2 odom、Livox IMU、底盘 `/odom_CBoar`、`/rtk_fgo/*`、TF、GPS/goal 状态、costmap、`/cmd_vel` 和 `/plan`；需要原始点云回放时再设置 `FYP_NAV_GPS_BAG_PROFILE=debug`。
 - 车上建议用 `FYP_USE_RVIZ=false bash scripts/launch_with_logs.sh nav-gps`，避免 RViz 消耗 Jetson 资源。
 
+
 ## 14. Fixed-Launch GPS Corridor
 
 ### GPS 路线采集（踩点）
@@ -662,7 +674,7 @@ python3 scripts/collect_gps_route.py
    - 高度异常（> 10m 跳变）会自动告警
 4. 确认 `launch_yaw_deg`（首段 > 5m 自动建议，否则手动输入）
 5. 保存前显示路线摘要表格（各段距离、方位角、ENU 坐标）
-6. 确认保存 → `~/XJTLU-autonomous-vehicle/runtime-data/gnss/current_route.yaml`
+6. 确认保存 → `~/frogbot2026/runtime-data/gnss/current_route.yaml`
 
 ### 自动 corridor 导航
 
@@ -720,12 +732,12 @@ ros2 bag info runtime-data/logs/latest/bag | grep -E '/livox/lidar|/fastlio2/bod
 
 说明：
 - 该模式假定车辆已经摆在固定 Launch Pose，并且车头朝向摆正
-- `collect_gps_route.py` 会采 `start_ref + 多个关键 waypoint`，并生成 `~/XJTLU-autonomous-vehicle/runtime-data/gnss/current_route.yaml`
+- `collect_gps_route.py` 会采 `start_ref + 多个关键 waypoint`，并生成 `~/frogbot2026/runtime-data/gnss/current_route.yaml`
 - `collect_gps_route.py` 若未检测到 `/fix`，会自动后台拉起 `nmea_navsat_driver`，采完后自动收掉
 - 采集时会显式确认 `launch_yaw_deg`；如果起点到第一个 waypoint 太近，会要求手工输入
 - 子目标间距默认 5m，采集时自动写入路线文件；长 RTK 路线会被拆成短子目标，减少 rolling costmap 和局部跟踪耦合风险
 - 运行时不会再弹出 menu，也不会等待额外命令
-- wrapper 会把日志和 bag 写入 `~/XJTLU-autonomous-vehicle/runtime-data/logs/<session>/`
+- wrapper 会把日志和 bag 写入 `~/frogbot2026/runtime-data/logs/<session>/`
 - corridor 当前启动时会从 `nav2_corridor_rtk.yaml` 生成临时 Nav2 参数文件并使用 RTK authoritative corridor 档：`vx_max=0.85`、`wz_max=0.70`、`ax_max=0.85`、`ax_min=-1.2`、`az_max=1.4`、`temperature=0.45`、`regenerate_noises=true`、`failure_tolerance=1.5s`、`controller_frequency=20Hz`、`batch_size=500`；local costmap 为近场 `12m x 12m`，STVL marking `obstacle_range=5m`，`CostCritic.cost_weight=7.0`；MPPI 的 `model_dt=0.05s` 要求控制周期不能大于模型步长，因此不能降到 `15Hz`
 - 到达最后一个 waypoint 后，`gps_route_runner` 会先发布 `STOPPING_BEFORE_EXIT`，以 20Hz 保持 1.2s 的零 `/cmd_vel`，然后再发布 `SUCCEEDED`；quiet 模式只会在该保持结束后退出，因此 bag 中应能看到明显的零速度尾巴。
 - corridor 默认启动 RTK FGO shadow node，但固定 `publish_tf=false`、`nav2_use_fgo=false`，不会接管 `map→odom` 或 Nav2；如需关闭可设置 `FYP_CORRIDOR_ENABLE_FGO_SHADOW=false`
@@ -736,13 +748,14 @@ ros2 bag info runtime-data/logs/latest/bag | grep -E '/livox/lidar|/fastlio2/bod
 
 **Quiet 模式**（默认）:
 - 前台只显示简化中文状态
-- 完整 launch 输出写入 `~/XJTLU-autonomous-vehicle/runtime-data/logs/<session>/system/launch_stdout.log`
+- 完整 launch 输出写入 `~/frogbot2026/runtime-data/logs/<session>/system/launch_stdout.log`
 - 启动超时默认 45s，可通过 `FYP_CORRIDOR_STARTUP_TIMEOUT_S` 环境变量调整
 
 **Raw 模式**（调试用）:
 ```bash
 FYP_CORRIDOR_CONSOLE_MODE=raw bash scripts/launch_with_logs.sh corridor
 ```
+
 
 ## RTK FGO 紧耦合 shadow mode
 
@@ -892,14 +905,14 @@ Travel 默认启动 Foxglove Bridge 和受控导航适配器，不需要再单�
 ```bash
 FYP_USE_RVIZ=false FYP_USE_FOXGLOVE=true \
   bash scripts/launch_with_logs.sh travel \
-  map_bundle:=/home/badger/XJTLU-autonomous-vehicle/runtime-data/maps/indoor/<map_id>
+  map_bundle:=/home/badger/frogbot2026/runtime-data/maps/indoor/<map_id>
 ```
 
 如端口冲突，可直接传 `foxglove_port:=8766`。临时完全关闭 Bridge：
 
 ```bash
 FYP_USE_FOXGLOVE=false bash scripts/launch_with_logs.sh travel \
-  map_bundle:=/home/badger/XJTLU-autonomous-vehicle/runtime-data/maps/indoor/<map_id>
+  map_bundle:=/home/badger/frogbot2026/runtime-data/maps/indoor/<map_id>
 ```
 
 首次使用在 Foxglove 中导入仓库布局：

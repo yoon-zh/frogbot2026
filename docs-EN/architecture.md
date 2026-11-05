@@ -1,22 +1,19 @@
 # System Architecture
 
-## 1. Deployment Locations
+![assets/frogbot-pic.jpg](/assets/frogbot-pic.jpg)
 
-- Jetson code repository: `~/XJTLU-autonomous-vehicle`
-- Runtime data root directory: `~/XJTLU-autonomous-vehicle/runtime-data`
-- GitHub remote: `Yangbadger222/XJTLU-autonomous-vehicle-rtk`
-- AI collaboration control plane: located in a separate PC repository, not within this code repository
-
-## 2. Hardware Platform
+## Hardware Platform
 
 - Jetson Orin NX, 16 GB RAM, Ubuntu 22.04, ROS 2 Humble
 - Livox MID360 LiDAR
 - WIT IMU
 - T-RTK UM982 Dual Antenna Mobile Kit + 4G Module (Rover End)
+- Intel Realsense D455f
 - Serial connection to STM32 lower-level controller
 - PS2 gamepad as the highest-priority manual override
 
-## 3. Eight Operating Modes
+
+## Operating Modes
 
 | Mode | Command | Current Purpose |
 |------|---------|-----------------|
@@ -29,10 +26,12 @@
 | Nav GPS | `make launch-nav-gps` | Scene bundle + anchor ready + GPS route-graph navigation mode |
 | RTK Basic | `make launch-rtk-basic` | RTK signal testing with CORS account |
 | Tightly Coupled | `make launch-tightly-coupled` | Experimental RTK FGO shadow mode publishing `/rtk_fgo/*` beside the main stack |
+| Survey | `make launch-survey` | Autonomous indoor exploration of unknown area, including map building and localization vs map database |
 
 All `make launch-*` entry points go through `scripts/launch_with_logs.sh`, so session-isolated log directories are created by default.
 
-## 4. SLAM Pure Mapping Data Flow
+
+## SLAM Pure Mapping Data Flow
 
 ```text
 Livox MID360 + IMU -> FAST-LIO2 -> /fastlio2/body_cloud (low 2D LaserScan slice)
@@ -58,7 +57,8 @@ scripts/save_mapping_session.sh <map_name>
 
 SLAM mode does not run Nav2 planners/controllers. Slam Toolbox uses the repository-owned mapping profile and exclusively owns `map -> odom`; PGO saves the 3D assets with `publish_tf=false`. The mapping-only LaserScan profile first transforms points into `base_footprint`, then excludes the rectangular vehicle envelope `x=[-0.35,0.35]m, y=[-0.275,0.275]m` so body reflections cannot be written along the 2D trajectory. This profile does not alter the Travel/Corridor live obstacle clouds. Launch records a lean evidence bag by default and only debug adds raw clouds. Saving requires stationary LIO/chassis feedback, consistent frames, complete keyframes, and accepted 2D/3D registration. `use_rtk:=true` records future geo-registration evidence only; indoor invalid/float RTK is not a strong constraint.
 
-## 5. Explore Mode Data Flow
+
+## Explore Mode Data Flow
 
 ```text
 Livox MID360 -> /livox/lidar ------+
@@ -75,9 +75,10 @@ Nav2 -> /cmd_vel -> serial_twistctl -> STM32 -> motors
 STM32 -> serial_reader -> chassis feedback / odom_CBoard
 ```
 
-## 6. GPS-Related Chains
 
-### 5.1 Explore GPS Mode
+## GPS-Related Chains
+
+### Explore GPS Mode
 
 ```text
 GNSS serial -> nmea_navsat_driver -> /fix
@@ -91,7 +92,7 @@ GNSS serial -> nmea_navsat_driver -> /fix
 
 The purpose of `make launch-explore-gps` is still to inject the calibrated `/gnss` into PGO, improving the global position constraint capability of the `map -> odom` transform.
 
-### 5.2 Nav GPS Mode (scene bundle + route graph)
+### Nav GPS Mode (scene bundle + route graph)
 
 ```text
 scene_gps_bundle.yaml -> build_scene_runtime.py
@@ -128,10 +129,11 @@ The core of `nav-gps` is:
 - Nav2 uses the corridor RTK MPPI profile and the high-window `/fastlio2/body_cloud_nav2_obstacles` obstacle cloud instead of the old DWB-based `nav2_gps.yaml` profile
 - route server runs with `enable_nn_search=true`, and the goal manager starts from the current pose, so the vehicle no longer has to be near a small set of anchors before navigating
 - `scene_gps_bundle.yaml` is the single source of truth
-- At runtime, only compiled artifacts under `~/XJTLU-autonomous-vehicle/runtime-data/gnss/current_scene/` are read
+- At runtime, only compiled artifacts under `~runtime-data/gnss/current_scene/` are read
 - `goto_name` is the main entry point; users input only English destination names
 
-### 5.3 RTK FGO Tight-Coupled Experimental Mode (Shadow)
+
+### RTK FGO Tight-Coupled Experimental Mode (Shadow)
 
 ```text
 Explore stack + UM982 RTK
@@ -146,7 +148,8 @@ This mode can be launched standalone with `make launch-tightly-coupled`; `corrid
 - Nav2 is not remapped to FGO output, and the production localization output of `corridor`, `explore-gps`, and `nav-gps` is not replaced
 - Source sensor topics and `/rtk_fgo/*` are recorded automatically for rosbag replay and vehicle shadow validation
 
-## 7. TF Chain
+
+## TF Chain
 
 ```text
 map -> odom -> base_footprint -> base_link
@@ -166,28 +169,13 @@ map -> odom -> base_footprint -> base_link
 
 If `map -> odom` does not exist, RViz under the `map` fixed frame will appear as if point clouds or costmaps are blank, even if Livox and FAST-LIO2 are still running.
 
-## 8. Configuration Architecture
 
-- `src/bringup/config/master_params.yaml`
-  - Repository template parameter entry point
-- `src/bringup/config/nav2_default.yaml`
-- `src/bringup/config/nav2_explore.yaml`
-- `src/bringup/config/nav2_gps.yaml`
-- `src/bringup/config/nav2_travel.yaml`
-- `~/XJTLU-autonomous-vehicle/runtime-data/gnss/scene_gps_bundle.yaml`
-- `~/XJTLU-autonomous-vehicle/runtime-data/gnss/current_scene/master_params_scene.yaml`
-- `~/XJTLU-autonomous-vehicle/runtime-data/gnss/current_scene/scene_points.yaml`
-- `~/XJTLU-autonomous-vehicle/runtime-data/gnss/current_scene/scene_route_graph.geojson`
-- `src/sensor_drivers/gnss/gnss_calibration/config/calibration_points.yaml`
-- `src/perception/pgo_gps_fusion/config/pgo.yaml`
-- `src/perception/pgo_gps_fusion/config/pgo_no_gps.yaml`
+## Logs and Runtime Data
 
-## 8. Logs and Runtime Data
-
-`~/XJTLU-autonomous-vehicle/runtime-data/` lives inside the workspace and currently contains:
+`runtime-data/` lives inside the workspace and currently contains:
 
 ```text
-~/XJTLU-autonomous-vehicle/runtime-data/
+runtime-data/
 ├── bags/
 ├── config/
 │   └── log_switch.yaml
@@ -215,7 +203,7 @@ If `map -> odom` does not exist, RViz under the `map` fixed frame will appear as
 - `data/`: per-node custom data logs
 - `system/`: `tegrastats.log` and `session_info.yaml`
 
-## 9. Source Code Layout
+## Source Code Layout
 
 ```text
 src/
@@ -234,7 +222,7 @@ Notes:
 - `bringup/`: System launch files, parameters, maps, RViz configurations
 - Upstream dependencies are fetched through `vcs import < dependencies.repos` and are not treated as project-specific development space
 
-## 10. Package Build Types
+## Package Build Types
 
 - `ament_cmake`
   - `livox_ros_driver2`
@@ -259,7 +247,7 @@ Notes:
   - `gnss_calibration`
   - `gyro_odometry`
 
-## 11. Key Dependencies
+## Key Dependencies
 
 - PCL
 - OpenCV
@@ -273,7 +261,7 @@ Notes:
 - `ros-humble-geographic-msgs`
 
 
-## 5.3 GPS Corridor v2 Mode (Standalone Global Aligner Architecture)
+## GPS Corridor v2 Mode (Standalone Global Aligner Architecture)
 
 ```text
 current_route.yaml
@@ -324,7 +312,7 @@ Key architectural decisions for this mode:
 - **Indoor/outdoor handoff interface**: `rtk_map_odom_corrector` publishes `/localization_authority/mode`, `/localization_authority/status`, and `/localization_authority/diagnostics`; a later prior-map relocalizer can become another authority source on the same `map->odom` interface
 
 Data plane for this mode:
-- `~/XJTLU-autonomous-vehicle/runtime-data/gnss/current_route.yaml` (generated by `collect_gps_route.py`)
+- `runtime-data/gnss/current_route.yaml` (generated by `collect_gps_route.py`)
 - `start_ref` + multiple `waypoints[]` GPS coordinates
 - `launch_yaw_deg` is a required field
 - `/localization_authority/*` records the current `map->odom` authority source, rejection reason, raw RTK `map_base` jump, raw `map->odom` target/output gap, and limited output
