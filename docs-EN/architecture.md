@@ -30,7 +30,8 @@
 
 All `make launch-*` entry points go through `scripts/launch_with_logs.sh`, so session-isolated log directories are created by default.
 
-## 4. SLAM Pure Mapping Data Flow
+
+## SLAM Pure Mapping Data Flow
 
 ```text
 Livox MID360 + IMU -> FAST-LIO2 -> /fastlio2/body_cloud (low 2D LaserScan slice)
@@ -56,7 +57,8 @@ scripts/save_mapping_session.sh <map_name>
 
 SLAM mode does not run Nav2 planners/controllers. Slam Toolbox uses the repository-owned mapping profile and exclusively owns `map -> odom`; PGO saves the 3D assets with `publish_tf=false`. The mapping-only LaserScan profile first transforms points into `base_footprint`, then excludes the rectangular vehicle envelope `x=[-0.35,0.35]m, y=[-0.275,0.275]m` so body reflections cannot be written along the 2D trajectory. This profile does not alter the Travel/Corridor live obstacle clouds. Launch records a lean evidence bag by default and only debug adds raw clouds. Saving requires stationary LIO/chassis feedback, consistent frames, complete keyframes, and accepted 2D/3D registration. `use_rtk:=true` records future geo-registration evidence only; indoor invalid/float RTK is not a strong constraint.
 
-## 5. Explore Mode Data Flow
+
+## Explore Mode Data Flow
 
 ```text
 Livox MID360 -> /livox/lidar ------+
@@ -130,6 +132,7 @@ The core of `nav-gps` is:
 - At runtime, only compiled artifacts under `~runtime-data/gnss/current_scene/` are read
 - `goto_name` is the main entry point; users input only English destination names
 
+
 ### RTK FGO Tight-Coupled Experimental Mode (Shadow)
 
 ```text
@@ -200,7 +203,7 @@ runtime-data/
 - `data/`: per-node custom data logs
 - `system/`: `tegrastats.log` and `session_info.yaml`
 
-## 9. Source Code Layout
+## Source Code Layout
 
 ```text
 src/
@@ -219,7 +222,7 @@ Notes:
 - `bringup/`: System launch files, parameters, maps, RViz configurations
 - Upstream dependencies are fetched through `vcs import < dependencies.repos` and are not treated as project-specific development space
 
-## 10. Package Build Types
+## Package Build Types
 
 - `ament_cmake`
   - `livox_ros_driver2`
@@ -244,7 +247,7 @@ Notes:
   - `gnss_calibration`
   - `gyro_odometry`
 
-## 11. Key Dependencies
+## Key Dependencies
 
 - PCL
 - OpenCV
@@ -258,7 +261,7 @@ Notes:
 - `ros-humble-geographic-msgs`
 
 
-## 5.3 GPS Corridor v2 Mode (Standalone Global Aligner Architecture)
+## GPS Corridor v2 Mode (Standalone Global Aligner Architecture)
 
 ```text
 current_route.yaml

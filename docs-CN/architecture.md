@@ -1,18 +1,14 @@
 # 系统架构
 
-## 1. 运行位置
+![assets/frogbot-pic.jpg](/assets/frogbot-pic.jpg)
 
-- Jetson 代码仓: `~/XJTLU-autonomous-vehicle`
-- 运行时数据根目录: `~/XJTLU-autonomous-vehicle/runtime-data`
-- GitHub 远端: `Yangbadger222/XJTLU-autonomous-vehicle-rtk`
-- AI 协作控制面: 位于独立 PC 仓库，不在本代码仓内
-
-## 2. 硬件平台
+## 硬件平台
 
 - Jetson Orin NX, 16 GB RAM, Ubuntu 22.04, ROS 2 Humble
 - Livox MID360 LiDAR
 - WIT IMU
 - T-RTK UM982 双天线 Mobile 套装 + 4G 模块 (移动端)
+- Intel Realsense D455f 摄像头
 - 串口连接到 STM32 下位机
 - PS2 手柄作为最高优先级人工接管
 
@@ -29,10 +25,12 @@
 | Nav GPS | `make launch-nav-gps` | scene bundle + anchor ready + GPS 路网导航模式 |
 | RTK Basic | `make launch-rtk-basic` | RTK 信号检测 |
 | Tightly Coupled | `make launch-tightly-coupled` | 实验性 RTK FGO shadow mode，旁路发布 `/rtk_fgo/*` |
+| Survey | `make launch-survey` | 未知区域室内自主探索，包括地图构建与基于地图数据库的定位 |
 
 所有 `make launch-*` 入口都通过 `scripts/launch_with_logs.sh` 启动，因此默认会生成按 session 隔离的日志目录。
 
-## 4. SLAM 纯建图数据流
+
+## SLAM 纯建图数据流
 
 ```text
 Livox MID360 + IMU -> FAST-LIO2 -> /fastlio2/body_cloud (2D LaserScan 低窗)
@@ -58,7 +56,8 @@ scripts/save_mapping_session.sh <map_name>
 
 SLAM 模式不启动 Nav2 planner/controller，也不执行导航行为。Slam Toolbox 使用仓库内 `slam_toolbox_mapping.yaml` 并独占 `map -> odom`，PGO 以 `publish_tf=false` 保存三维地图。建图专用 LaserScan 参数先把点云变换到 `base_footprint`，再排除 `x=[-0.35,0.35]m, y=[-0.275,0.275]m` 的矩形车体外廓，防止车体反射随轨迹写入 2D 地图；该参数不影响 Travel/Corridor 实时障碍云。launch 默认录制 lean 证据 bag，debug profile 才加入原始点云。保存脚本要求 FAST-LIO2 与底盘连续静止、frame 一致、关键帧完整且 2D/3D 配准通过。RTK `use_rtk:=true` 仅用于记录后续地理配准证据，室内 invalid/float 不作为强约束。
 
-## 5. Explore 模式数据流
+
+## Explore 模式数据流
 
 ```text
 Livox MID360 -> /livox/lidar ------+
@@ -75,9 +74,10 @@ Nav2 -> /cmd_vel -> serial_twistctl -> STM32 -> motors
 STM32 -> serial_reader -> chassis feedback / odom_CBoard
 ```
 
-## 6. GPS 相关链路
 
-### 5.1 Explore GPS 模式
+## GPS 相关链路
+
+### Explore GPS 模式
 
 ```text
 GNSS serial -> nmea_navsat_driver -> /fix
@@ -91,7 +91,7 @@ GNSS serial -> nmea_navsat_driver -> /fix
 
 `make launch-explore-gps` 的职责仍然是把校准后的 `/gnss` 注入 PGO，提升 `map -> odom` 的全局位置约束能力。
 
-### 5.2 Nav GPS 模式（scene bundle + route graph）
+### Nav GPS 模式（scene bundle + route graph）
 
 ```text
 scene_gps_bundle.yaml -> build_scene_runtime.py
@@ -128,10 +128,11 @@ goto_name -> gps_waypoint_dispatcher(goal manager) ------------+
 - Nav2 使用 corridor RTK MPPI profile 和 `/fastlio2/body_cloud_nav2_obstacles` 高窗障碍点云，而不是旧 `nav2_gps.yaml` 的 DWB profile
 - route server 开启 `enable_nn_search=true`，goal manager 使用当前 pose 起算，不再要求车辆靠近少数 anchor 才能导航
 - `scene_gps_bundle.yaml` 是唯一 source of truth
-- 运行时只读取 `~/XJTLU-autonomous-vehicle/runtime-data/gnss/current_scene/` 下的编译产物
+- 运行时只读取 `runtime-data/gnss/current_scene/` 下的编译产物
 - `goto_name` 是主入口；用户只输入英文目标名
 
-### 5.3 RTK FGO 紧耦合实验模式（shadow）
+
+### RTK FGO 紧耦合实验模式（shadow）
 
 ```text
 Explore stack + UM982 RTK
@@ -146,7 +147,8 @@ Explore stack + UM982 RTK
 - 不 remap Nav2，不替换 `corridor`、`explore-gps`、`nav-gps` 的生产定位输出
 - 自动录制源传感器 topic 与 `/rtk_fgo/*`，用于 rosbag replay 和实车旁路验证
 
-## 7. TF 链
+
+## TF 链
 
 ```text
 map -> odom -> base_footprint -> base_link
@@ -166,28 +168,13 @@ map -> odom -> base_footprint -> base_link
 
 如果 `map -> odom` 不存在，RViz 在 `map` fixed frame 下会表现为点云或 costmap 看起来空白，即使 Livox 和 FAST-LIO2 本身还在运行。
 
-## 8. 配置架构
 
-- `src/bringup/config/master_params.yaml`
-  - 仓库模板参数入口
-- `src/bringup/config/nav2_default.yaml`
-- `src/bringup/config/nav2_explore.yaml`
-- `src/bringup/config/nav2_gps.yaml`
-- `src/bringup/config/nav2_travel.yaml`
-- `~/XJTLU-autonomous-vehicle/runtime-data/gnss/scene_gps_bundle.yaml`
-- `~/XJTLU-autonomous-vehicle/runtime-data/gnss/current_scene/master_params_scene.yaml`
-- `~/XJTLU-autonomous-vehicle/runtime-data/gnss/current_scene/scene_points.yaml`
-- `~/XJTLU-autonomous-vehicle/runtime-data/gnss/current_scene/scene_route_graph.geojson`
-- `src/sensor_drivers/gnss/gnss_calibration/config/calibration_points.yaml`
-- `src/perception/pgo_gps_fusion/config/pgo.yaml`
-- `src/perception/pgo_gps_fusion/config/pgo_no_gps.yaml`
+## 日志与运行时数据
 
-## 8. 日志与运行时数据
-
-`~/XJTLU-autonomous-vehicle/runtime-data/` 位于工作区内部，当前主要包含：
+`runtime-data/` 位于工作区内部，当前主要包含：
 
 ```text
-~/XJTLU-autonomous-vehicle/runtime-data/
+runtime-data/
 ├── bags/
 ├── config/
 │   └── log_switch.yaml
@@ -324,7 +311,7 @@ current_route.yaml
 - **室内外切换接口**: `rtk_map_odom_corrector` 发布 `/localization_authority/mode`、`/localization_authority/status` 和 `/localization_authority/diagnostics`；后续室内先验地图 relocalization 可作为新的 authority source 接管同一 `map→odom` 接口
 
 该模式的数据面：
-- `~/XJTLU-autonomous-vehicle/runtime-data/gnss/current_route.yaml`（`collect_gps_route.py` 生成）
+- `runtime-data/gnss/current_route.yaml`（`collect_gps_route.py` 生成）
 - `start_ref` + 多个 `waypoints[]` 的 GPS 坐标
 - `launch_yaw_deg` 为必填字段
 - `/localization_authority/*` 记录当前 `map→odom` authority 来源、拒绝原因、raw RTK `map_base` jump、raw `map→odom` target/output gap 和限幅后的输出

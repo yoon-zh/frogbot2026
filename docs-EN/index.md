@@ -42,6 +42,7 @@ Service Daemons:
 - [frogboard.service](../scripts/frogboard_server/frogboard.service)
 - [camera_stream.service](../scripts/camera_stream/camera_stream.service)
 
+
 ## Firmware Submodule
 
 The STM32 RM C Board lower-controller code is maintained as a Git submodule: [/src/firmware/frogbot-stm32/](../src/firmware/frogbot-stm32/)
@@ -51,10 +52,12 @@ The STM32 RM C Board lower-controller code is maintained as a Git submodule: [/s
   git submodule update --init --recursive
   ```
 
+
 ## Archive Notes
 
 - `docs-CN/devlog/legacy/` and `docs-EN/devlog/legacy/` contain archived historical documents, kept for reference only and not maintained under the current structure.
 - Documentation belonging to dependencies fetched through `dependencies.repos` is outside the scope of this repository's self-maintained documentation.
+
 
 ## Maintenance Principles
 
