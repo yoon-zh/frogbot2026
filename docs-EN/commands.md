@@ -5,15 +5,14 @@ This document only records commands confirmed to be executable in the current re
 ## Initial Setup
 
 All commands below rely on the following conditions:
-1. The robot repository is cloned into a folder `~/XJTLU-autonomous-vehicle`
+1. The robot repository is cloned into a folder `~/frogbot2026`
 2. The robot has ROS2 Humble installed
 3. `~/.bashrc` matches exactly the version in [/scripts/.bashrc](/scripts/.bashrc)
 
 To create the directory, run:
 ```bash
-cd ~/
-mkdir XJTLU-autonomous-vehicle
-cd ~/XJTLU-autonomous-vehicle
+git clone git@github.com:yoon-zh/frogbot2026.git
+cd ~/frogbot2026
 ```
 
 To install ROS2 Humble, follow their [official documentation](https://docs.ros.org/en/humble/Installation/Alternatives/Ubuntu-Development-Setup.html).
@@ -33,7 +32,7 @@ vi ~/.bashrc
 source ~/.bashrc
 ```
 
-## 1. Build and Source
+## Build and Source
 
 If prerequisite development tools (`vcs`, `rosdep`, `pip`) are not previously installed:
 
@@ -42,7 +41,6 @@ sudo apt-get update
 sudo apt-get install -y python3-vcstool python3-rosdep python3-pip
 sudo rosdep init || true
 rosdep update
-pip install websockets
 ```
 
 Initial setup and build:
@@ -67,17 +65,20 @@ make build-firmware
 
 # Single package build
 colcon build --packages-select <pkg> --symlink-install --parallel-workers 1
+```
 
-# Must re-source after every build
-ss
+> [!IMPORTANT]
+> You MUST re-source after every build:
+
+```bash
+source /opt/ros/humble/setup.bash
+source install/setup.bash
 ```
 
 ## 2. Initialize Runtime Data
 
 ```bash
 bash scripts/init_runtime_data.sh
-
-ls ~/XJTLU-autonomous-vehicle/runtime-data
 ```
 
 ## 3. Launch Operating Modes
@@ -143,8 +144,6 @@ FYP_SLAM_RECORD_BAG=false bash scripts/launch_with_logs.sh slam
 
 One-line command for indoor click-to-go navigation without GPS:
 
-> Compatibility note: `FYP_*` names are legacy runtime interface variables still read by the current scripts. This documentation pass updates public project wording, not runtime interface names.
-
 ```bash
 FYP_USE_RVIZ=true bash scripts/launch_with_logs.sh indoor-nav
 ```
@@ -158,7 +157,7 @@ One-line command for prior-map Travel navigation:
 
 ```bash
 FYP_USE_RVIZ=true bash scripts/launch_with_logs.sh travel \
-  map_bundle:=/home/badger/XJTLU-autonomous-vehicle/runtime-data/maps/indoor/<map_id>
+  map_bundle:=/home/badger/frogbot2026/runtime-data/maps/indoor/<map_id>
 ```
 
 Travel records a navigation diagnostic rosbag for every launch session at
@@ -171,11 +170,11 @@ point-cloud obstacle input must also be replayed:
 ```bash
 FYP_TRAVEL_BAG_PROFILE=debug FYP_USE_RVIZ=false FYP_USE_FOXGLOVE=true \
   bash scripts/launch_with_logs.sh travel \
-  map_bundle:=/home/badger/XJTLU-autonomous-vehicle/runtime-data/maps/indoor/floor_4
+  map_bundle:=/home/badger/frogbot2026/runtime-data/maps/indoor/floor_4
 
 # Disable automatic recording only when replay evidence is explicitly unnecessary
 FYP_TRAVEL_RECORD_BAG=false bash scripts/launch_with_logs.sh travel \
-  map_bundle:=/home/badger/XJTLU-autonomous-vehicle/runtime-data/maps/indoor/floor_4
+  map_bundle:=/home/badger/frogbot2026/runtime-data/maps/indoor/floor_4
 ```
 
 Notes:
@@ -214,7 +213,7 @@ not possible here because `map -> base_link` does not exist before initial local
 
 ```bash
 ros2 service call /localizer/relocalize interface/srv/Relocalize \
-  "{pcd_path: '/home/badger/XJTLU-autonomous-vehicle/runtime-data/maps/indoor/<map_id>/localization/map_localization.pcd', x: 0.0, y: 0.0, z: 0.0, yaw: 0.0, pitch: 0.0, roll: 0.0}"
+  "{pcd_path: '/home/badger/frogbot2026/runtime-data/maps/indoor/<map_id>/localization/map_localization.pcd', x: 0.0, y: 0.0, z: 0.0, yaw: 0.0, pitch: 0.0, roll: 0.0}"
 ```
 
 Named navigation without RViz:
@@ -254,7 +253,7 @@ bash scripts/launch_with_logs.sh survey
 ```
 
 Notes:
-- The Survey mode automatically explores unknown areas within a confined radius (`max_radius`) from the initial odometry frame `(0,0,0)`.
+- The Survey mode automatically explores unknown areas within a confined radius `max_radius` from the initial odometry frame `(0,0,0)`.
 - It queries a map-matching service comparing the active SLAM map to the saved map database.
 - It features 4 logic states visible in the node logs:
   - `Autonomous_Exploration`: Commands navigation to frontiers. Rejects goals outside `max_radius`.
@@ -269,9 +268,10 @@ Logs to expect:
   ```
   Alternatively, you can view the log file stored in the session directory:
   ```bash
-  cat ~/XJTLU-autonomous-vehicle/runtime-data/logs/latest/console/survey_node.log
+  cat ~/frogbot2026/runtime-data/logs/latest/console/survey_node.log
   ```
 - Look for state transition logs in the terminal output. Messages include `Survey node initialized in state: ...`, `Match score ... >= guess threshold. Transitioning to Hypothesis_Testing`, `Goal rejected: exceeds MAX_RADIUS`, and `Fully mapped within radius. Transitioning to Return_To_Home`.
+
 
 ## 4. Launch Individual Core Components
 
@@ -290,13 +290,13 @@ ros2 launch gnss_calibration gnss_calibration_launch.py
 
 # GNSS scene-ready localizer (new GPS route-graph architecture)
 ros2 run gnss_calibration gps_anchor_localizer_node \
-  --ros-args --params-file ~/XJTLU-autonomous-vehicle/runtime-data/gnss/current_scene/master_params_scene.yaml
+  --ros-args --params-file ~/frogbot2026/runtime-data/gnss/current_scene/master_params_scene.yaml
 
 # FAST-LIO2
-ros2 launch fastlio2 lio_no_rviz.py params_file:=~/XJTLU-autonomous-vehicle/src/bringup/config/master_params.yaml
+ros2 launch fastlio2 lio_no_rviz.py params_file:=~/frogbot2026/src/bringup/config/master_params.yaml
 
 # PGO + FAST-LIO2
-ros2 launch pgo pgo_launch.py params_file:=~/XJTLU-autonomous-vehicle/src/bringup/config/master_params.yaml
+ros2 launch pgo pgo_launch.py params_file:=~/frogbot2026/src/bringup/config/master_params.yaml
 
 # Compatible with legacy flat PGO config
 ros2 launch pgo pgo_launch.py pgo_config:=pgo_no_gps.yaml
@@ -361,23 +361,24 @@ Common diagnostic focus points:
 - Whether `/compute_route` / `/follow_path` / `/navigate_to_pose` actions are online
 - Whether the RViz fixed frame is set to `map`
 
+
 ## 6. Logs and Runtime Data
 
 ```bash
 # Check what latest points to
-readlink -f ~/XJTLU-autonomous-vehicle/runtime-data/logs/latest
+readlink -f ~/frogbot2026/runtime-data/logs/latest
 
 # View current session metadata
-cat ~/XJTLU-autonomous-vehicle/runtime-data/logs/latest/system/session_info.yaml
+cat ~/frogbot2026/runtime-data/logs/latest/system/session_info.yaml
 
 # View tegrastats
-tail -f ~/XJTLU-autonomous-vehicle/runtime-data/logs/latest/system/tegrastats.log
+tail -f ~/frogbot2026/runtime-data/logs/latest/system/tegrastats.log
 
 # View console log directory
-ls ~/XJTLU-autonomous-vehicle/runtime-data/logs/latest/console
+ls ~/frogbot2026/runtime-data/logs/latest/console
 
 # View data log directory
-ls ~/XJTLU-autonomous-vehicle/runtime-data/logs/latest/data
+ls ~/frogbot2026/runtime-data/logs/latest/data
 ```
 
 ## 7. Data Collection and Evaluation
@@ -385,14 +386,14 @@ ls ~/XJTLU-autonomous-vehicle/runtime-data/logs/latest/data
 ```bash
 # Record rosbag
 bash scripts/data_collection/record_bag.sh
-bash scripts/data_collection/record_bag.sh ~/XJTLU-autonomous-vehicle/runtime-data/bags/my_run
+bash scripts/data_collection/record_bag.sh ~/frogbot2026/runtime-data/bags/my_run
 
 # Record tegrastats separately
 bash scripts/data_collection/record_perf.sh
-bash scripts/data_collection/record_perf.sh ~/XJTLU-autonomous-vehicle/runtime-data/perf/my_run.log
+bash scripts/data_collection/record_perf.sh ~/frogbot2026/runtime-data/perf/my_run.log
 
 # Export TUM trajectory
-python3 scripts/data_collection/bag_to_tum.py   ~/XJTLU-autonomous-vehicle/runtime-data/bags/my_run/rosbag2   /pgo/optimized_odom   ~/XJTLU-autonomous-vehicle/runtime-data/bags/my_run/pgo_optimized.tum
+python3 scripts/data_collection/bag_to_tum.py   ~/frogbot2026/runtime-data/bags/my_run/rosbag2   /pgo/optimized_odom   ~/frogbot2026/runtime-data/bags/my_run/pgo_optimized.tum
 ```
 
 ## 8. Map Saving
@@ -442,14 +443,15 @@ ros2 run tf2_tools view_frames
 ros2 run tf2_ros tf2_echo odom base_footprint
 
 # Save 3D point cloud map; file_path must be absolute because ROS service requests do not expand ~
-ros2 service call /pgo/save_maps interface/srv/SaveMaps "{file_path: '/home/badger/XJTLU-autonomous-vehicle/runtime-data/maps/indoor/<map_name>/localization', save_patches: true}"
+ros2 service call /pgo/save_maps interface/srv/SaveMaps "{file_path: '/home/badger/frogbot2026/runtime-data/maps/indoor/<map_name>/localization', save_patches: true}"
 
 # Save 2D occupancy grid map
-ros2 run nav2_map_server map_saver_cli -f ~/XJTLU-autonomous-vehicle/runtime-data/maps/indoor/<map_name>/navigation/map --ros-args -p map_subscribe_transient_local:=true
+ros2 run nav2_map_server map_saver_cli -f ~/frogbot2026/runtime-data/maps/indoor/<map_name>/navigation/map --ros-args -p map_subscribe_transient_local:=true
 
 # View PCD
 pcl_viewer -bc 1,1,1 -ps 3 <map.pcd>
 ```
+
 
 ## 9. Stop System and Emergency Stop
 
@@ -464,6 +466,7 @@ Stop and emergency-stop priority:
 2. Red physical emergency stop button on the vehicle body overrides all software commands
 
 The lower-controller `B` button path now performs damped active braking: it keeps motor control enabled, applies current opposite to wheel speed, preserves a high current limit at higher speed for short stopping distance, tapers current at low speed, rate-limits current changes, then clears state and keeps sending zero-current frames near stop. The `B` brake latch initializes only on the first trigger, so holding `B` does not repeatedly clear the current ramp; the `B` indication is solid pink and no longer uses a blocking blink. Do not use `B` as a replacement for `X` or the red physical e-stop until bench and vehicle validation are complete.
+
 
 ## 10. Git and PR
 
@@ -499,6 +502,7 @@ git checkout main
 git pull --ff-only
 git fetch --prune
 ```
+
 
 ## 11. System Maintenance
 
@@ -548,12 +552,13 @@ Notes:
 - When the script runs locally on the Jetson, it automatically switches to local mode; if the current shell is SSH/Tailscale, the session may disconnect during the network switch
 - Each network switch restarts `todeskd` on the Jetson side, with logs written to `/tmp/wifi-switch.log`
 
+
 ## 12. GPS Data Collection
 
 Minimum two-line launch commands:
 
 ```bash
-ros2 launch nmea_navsat_driver nmea_serial_driver.launch.py params_file:=/home/jetson/XJTLU-autonomous-vehicle/src/bringup/config/master_params.yaml
+ros2 launch nmea_navsat_driver nmea_serial_driver.launch.py params_file:=/home/jetson/frogbot2026/src/bringup/config/master_params.yaml
 python3 scripts/collect_gps_scene.py
 ```
 
@@ -565,7 +570,7 @@ Script description:
 - Coordinate source: **uses /fix only**
 - Sampling: 10 samples per point, averaged
 - Quality threshold: sample spread < 2 m, otherwise collection is rejected
-- Output file: `~/XJTLU-autonomous-vehicle/runtime-data/gnss/scene_gps_bundle.yaml`
+- Output file: `~/frogbot2026/runtime-data/gnss/scene_gps_bundle.yaml`
 - A single file simultaneously maintains:
   - fixed origin
   - graph nodes
@@ -595,7 +600,7 @@ python3 scripts/compile_qgis_scene.py \
   --input /Users/badger/Desktop/maps/qgis_4_package/3.geojson \
   --scene-name qgis_4 \
   --densify-step-m 5.0 \
-  --output ~/XJTLU-autonomous-vehicle/runtime-data/gnss/scene_gps_bundle.yaml
+  --output ~/frogbot2026/runtime-data/gnss/scene_gps_bundle.yaml
 
 python3 scripts/build_scene_runtime.py
 ```
@@ -607,6 +612,7 @@ Collection guidelines:
 - Areas where the system may be powered on must have nearby `anchor` points
 - Graph edges are understood as straight-line segments between nodes; curves must be discretized by adding more nodes
 - The script will prompt whether to automatically create an edge with the previous point
+
 
 ## 13. GPS Navigation Debugging
 
@@ -649,6 +655,7 @@ Runtime notes:
 - The default lean bag records RTK, FAST-LIO2 odom, Livox IMU, chassis `/odom_CBoar`, `/rtk_fgo/*`, TF, GPS/goal status, costmaps, `/cmd_vel`, and `/plan`; use `FYP_NAV_GPS_BAG_PROFILE=debug` only when raw point-cloud replay is needed.
 - On the vehicle, prefer `FYP_USE_RVIZ=false bash scripts/launch_with_logs.sh nav-gps` to avoid spending Jetson resources on RViz.
 
+
 ## 14. Fixed-Launch GPS Corridor
 
 ### GPS Route Collection (Waypoint Survey)
@@ -666,7 +673,7 @@ Interactive workflow:
    - Altitude anomalies (> 10 m jump) trigger automatic warnings
 4. Confirm `launch_yaw_deg` (auto-suggested if first segment > 5 m, otherwise manual input)
 5. Route summary table displayed before saving (segment distances, bearings, ENU coordinates)
-6. Confirm save -> `~/XJTLU-autonomous-vehicle/runtime-data/gnss/current_route.yaml`
+6. Confirm save -> `~/frogbot2026/runtime-data/gnss/current_route.yaml`
 
 ### Automatic Corridor Navigation
 
@@ -724,12 +731,12 @@ ros2 bag info runtime-data/logs/latest/bag | grep -E '/livox/lidar|/fastlio2/bod
 
 Notes:
 - This mode assumes the vehicle is already placed at the fixed Launch Pose with the heading aligned
-- `collect_gps_route.py` collects `start_ref + multiple key waypoints` and generates `~/XJTLU-autonomous-vehicle/runtime-data/gnss/current_route.yaml`
+- `collect_gps_route.py` collects `start_ref + multiple key waypoints` and generates `~/frogbot2026/runtime-data/gnss/current_route.yaml`
 - If `collect_gps_route.py` does not detect `/fix`, it automatically launches `nmea_navsat_driver` in the background and stops it after collection
 - The collection process explicitly confirms `launch_yaw_deg`; if the start point is too close to the first waypoint, manual input is required
 - Default subgoal spacing is 5 m, automatically written to the route file during collection; long RTK route legs are split into short subgoals to reduce rolling-costmap and local-tracking coupling risk
 - At runtime, no menu appears and no additional commands are awaited
-- The wrapper writes logs and bags to `~/XJTLU-autonomous-vehicle/runtime-data/logs/<session>/`
+- The wrapper writes logs and bags to `~/frogbot2026/runtime-data/logs/<session>/`
 - Corridor currently generates a temporary Nav2 parameter file from `nav2_corridor_rtk.yaml` at launch time and applies the RTK-authoritative corridor profile: `vx_max=0.85`, `wz_max=0.70`, `ax_max=0.85`, `ax_min=-1.2`, `az_max=1.4`, `temperature=0.45`, `regenerate_noises=true`, `failure_tolerance=1.5s`, `controller_frequency=20Hz`, and `batch_size=500`; the local costmap is near-field `12m x 12m`, STVL marking uses `obstacle_range=5m`, and `CostCritic.cost_weight=7.0`; MPPI keeps `model_dt=0.05s`, so the control period must not be larger than the model step and cannot be lowered to `15Hz`
 - After the final waypoint is reached, `gps_route_runner` publishes `STOPPING_BEFORE_EXIT`, holds zero `/cmd_vel` for 1.2s at 20Hz, then publishes `SUCCEEDED`; quiet mode exits only after this hold, so the bag should contain a visible zero-speed tail.
 - Corridor starts the RTK FGO shadow node by default, with `publish_tf=false` and `nav2_use_fgo=false`, so it does not own `map->odom` or feed Nav2; set `FYP_CORRIDOR_ENABLE_FGO_SHADOW=false` to disable it
@@ -740,13 +747,14 @@ Notes:
 
 **Quiet mode** (default):
 - Only simplified status messages are shown in the foreground
-- Full launch output is written to `~/XJTLU-autonomous-vehicle/runtime-data/logs/<session>/system/launch_stdout.log`
+- Full launch output is written to `~/frogbot2026/runtime-data/logs/<session>/system/launch_stdout.log`
 - Default startup timeout is 45 s, adjustable via the `FYP_CORRIDOR_STARTUP_TIMEOUT_S` environment variable
 
 **Raw mode** (for debugging):
 ```bash
 FYP_CORRIDOR_CONSOLE_MODE=raw bash scripts/launch_with_logs.sh corridor
 ```
+
 
 ## RTK FGO Tight-Coupled Shadow Mode
 
@@ -896,14 +904,14 @@ Travel starts Foxglove Bridge and the guarded navigation adapter by default, so 
 ```bash
 FYP_USE_RVIZ=false FYP_USE_FOXGLOVE=true \
   bash scripts/launch_with_logs.sh travel \
-  map_bundle:=/home/badger/XJTLU-autonomous-vehicle/runtime-data/maps/indoor/<map_id>
+  map_bundle:=/home/badger/frogbot2026/runtime-data/maps/indoor/<map_id>
 ```
 
 Pass `foxglove_port:=8766` if the default port is occupied. To disable the Bridge temporarily:
 
 ```bash
 FYP_USE_FOXGLOVE=false bash scripts/launch_with_logs.sh travel \
-  map_bundle:=/home/badger/XJTLU-autonomous-vehicle/runtime-data/maps/indoor/<map_id>
+  map_bundle:=/home/badger/frogbot2026/runtime-data/maps/indoor/<map_id>
 ```
 
 Import the repository layout into Foxglove on first use:
@@ -999,14 +1007,14 @@ Whenever you want to update `~/.bashrc`, modify it first from [/scripts/.bashrc]
 
 ### Initial setup
 
-1. Install `websockets` (and `pip` if not present)
+1\. Install `websockets` (and `pip` if not present)
 
 ```bash
 sudo apt-get install -y python3-pip
 pip install websockets
 ```
 
-2. Set up server autorunning service
+2\. Set up server autorunning service
 
 ```bash
 sudo cp ~/frogbot2026/scripts/frogboard_server/frogboard.service /etc/systemd/system/
@@ -1021,7 +1029,7 @@ From your phone or computer:
 
 1. Connect to the robot's Wi-Fi
 2. Open a browser, enter [frogboard.yoonzh.com](https://frogboard.yoonzh.com/)
-3. Enter the address: `robotfrogboard.yoonzh.com` and the port `9090`, then save
+3. In the settings, enter the address: `robotfrogboard.yoonzh.com` and the port `9090`, then save (these are already default)
 4. Check the logs to see connection status
 
 ### How to disconnect
