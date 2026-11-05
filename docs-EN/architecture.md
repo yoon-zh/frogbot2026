@@ -1,5 +1,7 @@
 # System Architecture
 
+![assets/frogbot-pic.jpg](/assets/frogbot-pic.jpg)
+
 ## Hardware Platform
 
 - Jetson Orin NX, 16 GB RAM, Ubuntu 22.04, ROS 2 Humble
