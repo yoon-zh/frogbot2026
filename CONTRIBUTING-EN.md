@@ -1,14 +1,21 @@
-# Contributing Guide
+> [!TIP]
+> Chinese version: [CONTRIBUTING.md](CONTRIBUTING.md)
 
-For any changes to the repository, make sure to follow this guide.
+# Contributing Guide
 
 ## General Development Rules
 
-1. Understand the chain before modifying code or parameters.
-2. Do not modify the primary operating chain without verifying the impact scope.
-3. Upstream dependencies are fetched through `dependencies.repos` + `vcs import`; this repository does not maintain a `src/third_party/` directory.
-4. Critical modifications must explain what, why, and risk.
-5. **Do not modify code directly on the vehicle (Jetson).** The standard flow is: modify code in your local repository on your own computer -> push to your branch on GitHub -> pull that branch on the vehicle -> build and deploy on the vehicle. The Jetson is only for compiling, running, and testing. **Any code changes in the Jetson directly will be deleted.**
+> [!IMPORTANT]
+> **Do not modify code directly on the vehicle (Jetson).** Any modifications found in the robot will be reset and erased.
+
+1. Understand the code and architecture before modifying code or parameters
+2. Do not modify the primary operating chain without verifying the impact scope
+3. Upstream dependencies are fetched through `dependencies.repos` + `vcs import`
+4. Critical modifications must explain what, why, and risk
+5. Create  The standard flow is: modify code in your local repository on your own computer -> push to your branch on GitHub -> pull that branch on the vehicle -> build and deploy on the vehicle. The Jetson is only for compiling, running, and testing. **Any code changes in the Jetson directly will be deleted.**
+
+
+
 
 ## Standard Development Flow
 
@@ -17,8 +24,8 @@ For any changes to the repository, make sure to follow this guide.
 SSH into the Jetson, check repository and hardware status:
 
 ```bash
-ssh badger@100.79.128.21
-git pull --ff-only
+ssh badger@robotfrogboard.yoonzh.com
+git pull
 ```
 
 First-time deployment or new machine initialization:
@@ -26,6 +33,7 @@ First-time deployment or new machine initialization:
 ```bash
 make setup
 make build
+source /opt/ros/humble/setup.bash
 source install/setup.bash
 bash scripts/init_runtime_data.sh
 ```
@@ -49,6 +57,7 @@ ls /dev/stm32_board
 
 Confirm all hardware is functioning before starting work.
 
+
 ### Step 2: Receive Task and Create/Switch Branch
 
 After receiving a task, create a new branch from the latest `main`, or switch to an existing working branch:
@@ -68,6 +77,7 @@ Branch names must be descriptive (changing what, doing what):
 - Bad Examples: `gps`, `lio`, `frc`
 
 Use one branch per task. Do not mix unrelated work in a single branch.
+
 
 ### Step 3: Research and Preparation
 

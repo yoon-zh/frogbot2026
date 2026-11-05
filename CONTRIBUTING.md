@@ -1,6 +1,5 @@
-以下是为您的文档提供的中文翻译版本，保留了原始的 Markdown 格式和技术术语：
-
----
+> [!TIP]
+> English version: [CONTRIBUTING-EN.md](CONTRIBUTING-EN.md)
 
 # 贡献指南 (Contributing Guide)
 
