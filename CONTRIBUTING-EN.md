@@ -12,9 +12,7 @@
 2. Do not modify the primary operating chain without verifying the impact scope
 3. Upstream dependencies are fetched through `dependencies.repos` + `vcs import`
 4. Critical modifications must explain what, why, and risk
-5. Create  The standard flow is: modify code in your local repository on your own computer -> push to your branch on GitHub -> pull that branch on the vehicle -> build and deploy on the vehicle. The Jetson is only for compiling, running, and testing. **Any code changes in the Jetson directly will be deleted.**
-
-
+5. Create your own branch from your computer, push changes to GitHub, then pull from the robot and test. The Jetson is only for compiling, running, and testing, do not modify code directly in there.
 
 
 ## Standard Development Flow
